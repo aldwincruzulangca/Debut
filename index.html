@@ -211,6 +211,7 @@
   }
   .avatar-slide.is-active { opacity: 1; }
   .avatar-dots { display: flex; justify-content: center; gap: 5px; margin: 10px 0 0; }
+  .avatar-dots[hidden] { display: none; }
   .avatar-dots .dot-sm { width: 6px; height: 6px; border-radius: 50% !important; background: var(--line); transition: all 0.25s ease; }
   .avatar-dots .dot-sm.active { background: var(--c-cal); width: 16px; }
 
@@ -243,6 +244,7 @@
     transform-origin: 0 0; cursor: grab; user-select: none; pointer-events: none;
   }
   .img-editor-thumb-tray { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .img-editor-thumb-tray[hidden] { display: none; }
   .img-editor-hint { font-size: 11px; color: var(--ink-soft); margin: 10px 0 0; text-align: center; }
 
   /* ---- Intro ---- */
@@ -404,6 +406,17 @@
     color: var(--c-cal); font-weight: 700; font-size: 11.5px;
     display: flex; align-items: center; justify-content: center;
   }
+  .eighteens-input {
+    flex: 1; min-width: 0;
+    background: transparent; border: none; border-bottom: 1px solid var(--line);
+    color: var(--ink); font-family: 'Montserrat', sans-serif; font-size: 13.5px;
+    padding: 4px 0; outline: none;
+  }
+  .eighteens-input:focus { border-bottom-color: var(--c-cal); }
+  .eighteens-save-row {
+    padding: 12px 18px 16px; border-top: 1px solid var(--line); flex: none;
+  }
+  .eighteens-save-row[hidden] { display: none; }
 
   /* ---- RSVP card ---- */
   .rsvp-card {
@@ -574,6 +587,19 @@
 
   .gallery-grid {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  }
+  /* The folder strip (not the photobooth grid, which stays a grid) scrolls
+     horizontally instead — drag/swipe left-right through all 20 folders. */
+  #galleryGrid {
+    display: flex; overflow-x: auto; gap: 10px;
+    scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px; cursor: grab;
+    scrollbar-width: none;
+  }
+  #galleryGrid::-webkit-scrollbar { display: none; }
+  #galleryGrid.is-dragging { cursor: grabbing; scroll-snap-type: none; }
+  #galleryGrid .g-tile {
+    flex: none; width: 120px; scroll-snap-align: start;
   }
   .g-tile {
     aspect-ratio: 1; border-radius: 14px; overflow: hidden;
@@ -1657,6 +1683,10 @@
         </div>
       </div>
       <ol class="eighteens-list" id="eighteensModalList"></ol>
+      <div class="eighteens-save-row" id="eighteensSaveRow" hidden>
+        <button type="button" class="send-btn" id="eighteensSaveBtn" style="margin-top: 0;">Save Names</button>
+        <p class="admin-msg" id="eighteensSaveMsg"></p>
+      </div>
     </div>
   </div>
 
@@ -4091,7 +4121,7 @@ var qrcode = function() {
   // Declared up here (rather than near persistManifest/loadManifest further
   // down) because the tile/slideshow builders below read manifest.* at
   // definition time, before the fetch-backed load ever runs.
-  var manifest = { months: {}, monthPhotos: {}, photobooth: [], rsvps: [], wishes: [], celebrationLive: false, videoUrl: '', slideshowMode: { mode: 'covers', albumSlug: '' }, bannerUrl: '', avatarUrls: [] };
+  var manifest = { months: {}, monthPhotos: {}, photobooth: [], rsvps: [], wishes: [], celebrationLive: false, videoUrl: '', slideshowMode: { mode: 'covers', albumSlug: '' }, bannerUrl: '', avatarUrls: [], eighteensLists: {} };
 
   // Placeholder far-future date so the template defaults to its inviting
   // "before" copy — swap this for the real event's end time per client.
@@ -4205,6 +4235,41 @@ var qrcode = function() {
     grid.appendChild(tile);
     tiles.push(tile);
   });
+
+  // The folder strip scrolls natively via touch; this adds mouse-drag panning
+  // for desktop, and suppresses the tile click that would otherwise fire
+  // right after a drag (so dragging never accidentally opens an album).
+  // Deliberately avoids setPointerCapture: capturing on the grid retargets
+  // the eventual click to fire on the grid instead of the tapped tile,
+  // which broke ordinary (non-drag) taps entirely.
+  (function () {
+    var isDown = false, dragStartX = 0, scrollStart = 0, dragged = false;
+    grid.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'touch') return; // let native touch scroll handle this
+      isDown = true;
+      dragged = false;
+      dragStartX = e.clientX;
+      scrollStart = grid.scrollLeft;
+    });
+    document.addEventListener('pointermove', function (e) {
+      if (!isDown) return;
+      var dx = e.clientX - dragStartX;
+      if (Math.abs(dx) > 4) {
+        dragged = true;
+        grid.classList.add('is-dragging');
+      }
+      grid.scrollLeft = scrollStart - dx;
+    });
+    function endDrag() {
+      isDown = false;
+      grid.classList.remove('is-dragging');
+    }
+    document.addEventListener('pointerup', endDrag);
+    document.addEventListener('pointercancel', endDrag);
+    grid.addEventListener('click', function (e) {
+      if (dragged) { e.stopPropagation(); e.preventDefault(); }
+    }, true);
+  })();
 
   function updateSlideshowAspect() {
     slideshow.style.aspectRatio = slidePhotoRatio[current] || '4 / 3';
@@ -4564,21 +4629,65 @@ var qrcode = function() {
 
   // 18's List: each of the four square cards opens the same floating modal,
   // pre-filled with 18 placeholder slots for who's assigned to that item.
+  // Admin can type real names in; guests just see whatever's been saved.
   var eighteensModal = document.getElementById('eighteensModal');
   var eighteensModalTitle = document.getElementById('eighteensModalTitle');
   var eighteensModalList = document.getElementById('eighteensModalList');
+  var eighteensSaveRow = document.getElementById('eighteensSaveRow');
+  var eighteensSaveBtn = document.getElementById('eighteensSaveBtn');
+  var eighteensSaveMsg = document.getElementById('eighteensSaveMsg');
+  var eighteensCurrentLabel = null;
+
   function openEighteensModal(label) {
+    eighteensCurrentLabel = label;
     eighteensModalTitle.textContent = label;
     eighteensModalList.innerHTML = '';
+    eighteensSaveMsg.textContent = '';
+    var saved = (manifest.eighteensLists && manifest.eighteensLists[label]) || [];
+    var admin = isAdminUnlocked();
     for (var i = 0; i < 18; i++) {
       var li = document.createElement('li');
-      li.textContent = '[Name]';
+      var val = saved[i] || '';
+      if (admin) {
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'eighteens-input';
+        input.placeholder = '[Name]';
+        input.value = val;
+        li.appendChild(input);
+      } else {
+        li.textContent = val || '[Name]';
+      }
       eighteensModalList.appendChild(li);
     }
+    eighteensSaveRow.hidden = !admin;
     eighteensModal.hidden = false;
     document.body.style.overflow = 'hidden';
     history.pushState({ eighteensModal: true }, '');
   }
+
+  eighteensSaveBtn.addEventListener('click', function () {
+    var inputs = eighteensModalList.querySelectorAll('.eighteens-input');
+    var values = Array.from(inputs).map(function (inp) { return inp.value.trim(); });
+    if (!manifest.eighteensLists) manifest.eighteensLists = {};
+    manifest.eighteensLists[eighteensCurrentLabel] = values;
+    eighteensSaveMsg.textContent = 'Saving…';
+    eighteensSaveMsg.className = 'admin-msg';
+    if (isConfigured()) {
+      persistManifest()
+        .then(function () {
+          eighteensSaveMsg.textContent = 'Saved.';
+          eighteensSaveMsg.className = 'admin-msg ok';
+        })
+        .catch(function () {
+          eighteensSaveMsg.textContent = 'Changed here, but couldn’t reach the shared list — try again.';
+          eighteensSaveMsg.className = 'admin-msg err';
+        });
+    } else {
+      eighteensSaveMsg.textContent = 'Preview only — upload isn’t wired up yet.';
+      eighteensSaveMsg.className = 'admin-msg';
+    }
+  });
   function hideEighteensModalNow() {
     eighteensModal.hidden = true;
     document.body.style.overflow = '';
@@ -4818,7 +4927,8 @@ var qrcode = function() {
       videoUrl: manifest.videoUrl,
       slideshowMode: manifest.slideshowMode,
       bannerUrl: manifest.bannerUrl,
-      avatarUrls: manifest.avatarUrls
+      avatarUrls: manifest.avatarUrls,
+      eighteensLists: manifest.eighteensLists
     };
     return fetch('https://api.jsonbin.io/v3/b/' + GALLERY_CONFIG.jsonbinId, {
       method: 'PUT',
@@ -4886,6 +4996,9 @@ var qrcode = function() {
     var btn = e.target.closest('.rsvp-admin-del');
     if (!btn) return;
     var ts = parseFloat(btn.getAttribute('data-ts'));
+    var target = (manifest.rsvps || []).find(function (r) { return r.ts === ts; });
+    var who = target ? target.name : 'this guest';
+    if (!window.confirm('Delete ' + who + '’s RSVP? This cannot be undone.')) return;
     manifest.rsvps = manifest.rsvps.filter(function (r) { return r.ts !== ts; });
     renderRsvpAdmin();
     if (isConfigured()) persistManifest().catch(function () {});
@@ -4937,6 +5050,7 @@ var qrcode = function() {
           : { mode: 'covers', albumSlug: '' };
         manifest.bannerUrl = (record && record.bannerUrl) || '';
         manifest.avatarUrls = (record && Array.isArray(record.avatarUrls)) ? record.avatarUrls : [];
+        manifest.eighteensLists = (record && record.eighteensLists && typeof record.eighteensLists === 'object') ? record.eighteensLists : {};
         renderSlideshow();
         syncSlideshowModeUI();
         applyBannerUrl();
@@ -5274,6 +5388,7 @@ var qrcode = function() {
   document.getElementById('rsvpDeleteBtn').addEventListener('click', function () {
     var mine = getMyRsvp();
     if (!mine) return;
+    if (!window.confirm('Delete your RSVP? This cannot be undone.')) return;
     manifest.rsvps = manifest.rsvps.filter(function (r) { return r.ts !== mine.ts; });
     clearMyRsvp();
 
