@@ -1303,19 +1303,22 @@
       <h2>The Gallery</h2>
     </div>
 
-    <div class="slideshow" id="slideshow" role="region" aria-roledescription="carousel" aria-label="The evening's gallery, moment by moment">
-      <!-- slides injected by script from MONTHS data -->
-      <button class="slide-nav prev" id="ssPrev" aria-label="Previous photo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      </button>
-      <button class="slide-nav next" id="ssNext" aria-label="Next photo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
-    </div>
-    <div class="dots" id="ssDots"></div>
+    <div id="galleryLiveWrap">
+      <div class="slideshow" id="slideshow" role="region" aria-roledescription="carousel" aria-label="Through the years, birth to seventeen">
+        <!-- slides injected by script from MONTHS data -->
+        <button class="slide-nav prev" id="ssPrev" aria-label="Previous photo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="slide-nav next" id="ssNext" aria-label="Next photo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div class="dots" id="ssDots"></div>
 
-    <div class="gallery-grid" id="galleryGrid"></div>
-    <p class="gallery-note">Photos coming soon &mdash; upload a set from the admin panel and each tile lights up.</p>
+      <div class="gallery-grid" id="galleryGrid"></div>
+      <p class="gallery-note">Photos coming soon &mdash; upload a set from the admin panel and each tile lights up.</p>
+    </div>
+    <p class="rsvp-note" id="galleryLockNote" hidden></p>
 
     <div class="admin-zone">
       <button type="button" class="admin-toggle" id="adminToggle">
@@ -3900,8 +3903,8 @@ var qrcode = function() {
 </script>
 
 <script>
-  var MONTHS = ["Getting Ready","Arrival","The Entrance","Family Portraits","Candid Moments","The Court","Dinner","Toasts","First Dance","Celebration","Late Night","Farewell"];
-  var MONTH_SLUGS = ["birth","month-01","month-02","month-03","month-04","month-05","month-06","month-07","month-08","month-09","month-10","month-11"];
+  var MONTHS = ["Birth","1 Year Old","2 Years Old","3 Years Old","4 Years Old","5 Years Old","6 Years Old","7 Years Old","8 Years Old","9 Years Old","10 Years Old","11 Years Old","12 Years Old","13 Years Old","14 Years Old","15 Years Old","16 Years Old","17 Years Old"];
+  var MONTH_SLUGS = ["birth","year-01","year-02","year-03","year-04","year-05","year-06","year-07","year-08","year-09","year-10","year-11","year-12","year-13","year-14","year-15","year-16","year-17"];
   var HUES = ["rose","peach","butter","mint","sky","lilac"];
 
   // Placeholder far-future date so the template defaults to its inviting
@@ -4509,7 +4512,7 @@ var qrcode = function() {
     uploadPreset: 'ftpozq0r',
     jsonbinId: '6a7be908da38895dfed8b9db',
     jsonbinKey: '$2a$10$/NLdb7gXgqU/J9H86zts4uAyg8kAivvcZgYjUEG2guZyAp.jF9mBe',
-    passcode: 'gala2025'
+    passcode: '10082025'
   };
   function isConfigured() {
     return ['cloudName', 'uploadPreset', 'jsonbinId', 'jsonbinKey'].every(function (k) {
@@ -4611,6 +4614,7 @@ var qrcode = function() {
     renderCoverPicker(parseInt(uploadMonth.value, 10) || 0);
     renderWishThread();
     applyWishLockState();
+    applyGalleryLockState();
   }
 
   function loadManifest() {
@@ -5850,16 +5854,20 @@ var qrcode = function() {
   var closingBodyEl = document.getElementById('closingBody');
 
   var DEFAULT_CLOSING_HEADLINE = "We can't wait to celebrate!";
-  var DEFAULT_CLOSING_BODY = "Black tie encouraged. Come dressed to shine.";
+  var DEFAULT_CLOSING_BODY = 'We are very excited to celebrate the magical 18th birthday with you, looking forward on your presence!';
   var THANKYOU_HEADLINE = 'Thank You!';
   var THANKYOU_BODY = 'Thank you for sharing this magical evening with [Name] and the family — the memory means the world to us.';
 
-  // The closing card's caption switches to the Thank You message at the
-  // actual party start time, independent of the admin's manual "celebration
-  // live" switch below (which only governs the wishes wall). Set in the past
-  // by default so this template's Wishes/Photobooth demo unlocked out of the
-  // box — swap for the real event's start time per client.
+  // Wishes/Photobooth/Gallery unlock at the actual party start time. Set in
+  // the past by default so this template's demo shows them unlocked out of
+  // the box — swap for the real event's start time per client.
   var PARTY_START = new Date('2020-01-01T00:00:00').getTime();
+
+  // The closing card's caption switches to the Thank You message 2 hours
+  // before the party actually ends, not at party start (guests are still
+  // arriving then) — swap PARTY_END for the real event's end time per client.
+  var PARTY_END = new Date('2020-01-01T04:00:00').getTime();
+  var CLOSING_SWITCH = PARTY_END - 2 * 60 * 60 * 1000;
 
   function isAdminUnlocked() {
     return sessionStorage.getItem('emaGalleryAdmin') === '1';
@@ -5868,7 +5876,7 @@ var qrcode = function() {
   function applyCelebrationState() {
     var isLive = manifest.celebrationLive === true;
     var showContent = isLive || isAdminUnlocked();
-    var closingLive = Date.now() >= PARTY_START || isAdminUnlocked();
+    var closingLive = Date.now() >= CLOSING_SWITCH || isAdminUnlocked();
 
     closingHeadlineEl.textContent = closingLive ? THANKYOU_HEADLINE : DEFAULT_CLOSING_HEADLINE;
     closingBodyEl.textContent = closingLive ? THANKYOU_BODY : DEFAULT_CLOSING_BODY;
@@ -5938,6 +5946,20 @@ var qrcode = function() {
     wishForm.classList.toggle('is-locked', locked);
   }
   applyWishLockState();
+
+  // The birth-to-17 growth gallery is a reveal for the event itself — keep it
+  // fully hidden (not just non-interactive) until the party, same gate as above.
+  var galleryLiveWrap = document.getElementById('galleryLiveWrap');
+  var galleryLockNote = document.getElementById('galleryLockNote');
+  var GALLERY_LOCK_MESSAGE = 'This gallery will be available after the Debut.';
+  function applyGalleryLockState() {
+    var locked = isBeforeParty();
+    galleryLiveWrap.hidden = locked;
+    galleryLockNote.hidden = !locked;
+    if (locked) galleryLockNote.textContent = GALLERY_LOCK_MESSAGE;
+  }
+  applyGalleryLockState();
+
   [wishName, wishMessage].forEach(function (el) {
     el.addEventListener('focus', function () {
       if (isBeforeParty()) { el.blur(); showWishLockNotice(); }
