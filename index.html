@@ -921,9 +921,12 @@
   .wish-emoji-toggle:focus-visible { outline: 2px solid var(--c-pin); outline-offset: 2px; }
   .wish-emoji-picker {
     display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
-    margin-top: 8px; padding: 10px; background: #0e0e0e; border-radius: 14px;
-    border: 1px solid var(--line);
+    position: absolute; z-index: 12; bottom: calc(100% + 8px); left: 0;
+    width: max-content; max-width: 280px;
+    padding: 10px; background: #0e0e0e; border-radius: 14px;
+    border: 1px solid var(--line); box-shadow: 0 10px 26px var(--shadow);
   }
+  .wish-emoji-picker[hidden] { display: none; }
   .wish-emoji-picker button {
     appearance: none; background: none; border: none; font-size: 19px;
     padding: 6px 0; border-radius: 8px; cursor: pointer;
@@ -6813,12 +6816,20 @@ var qrcode = function() {
       wishMessage.value = wishMessage.value.slice(0, start) + emoji + wishMessage.value.slice(end);
       wishMessage.focus();
       wishMessage.selectionStart = wishMessage.selectionEnd = start + emoji.length;
+      wishEmojiPicker.hidden = true;
     });
     wishEmojiPicker.appendChild(btn);
   });
 
-  wishEmojiToggle.addEventListener('click', function () {
+  wishEmojiToggle.addEventListener('click', function (e) {
+    e.stopPropagation();
     wishEmojiPicker.hidden = !wishEmojiPicker.hidden;
+  });
+  // Tap anywhere outside the popup to dismiss it without picking anything.
+  document.addEventListener('click', function (e) {
+    if (!wishEmojiPicker.hidden && !wishEmojiPicker.contains(e.target) && e.target !== wishEmojiToggle) {
+      wishEmojiPicker.hidden = true;
+    }
   });
 
   function renderWishThread() {
