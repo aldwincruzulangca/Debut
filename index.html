@@ -178,6 +178,73 @@
   }
   .banner-star svg { position: static; width: 18px; height: 18px; }
 
+  /* ---- Avatar: circle above the headline, up to 5 photos cross-fading ---- */
+  .photo-wrap {
+    position: relative;
+    width: clamp(220px, 78vw, 336px); height: clamp(220px, 78vw, 336px);
+    margin: 0 auto 20px;
+  }
+  .photo-ring {
+    width: 100%; height: 100%; border-radius: 50% !important;
+    padding: 3px;
+    background: linear-gradient(135deg, #ffe088, #d4af37, #8a7020);
+    box-shadow: 0 14px 34px var(--shadow);
+  }
+  .photo-ring .inner {
+    position: relative;
+    width: 100%; height: 100%; border-radius: 50% !important;
+    overflow: hidden;
+    background: linear-gradient(160deg, #1c1b1b, #0e0e0e);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .photo-badge {
+    position: absolute; top: -4px; right: -2px;
+    width: 42px; height: 42px; border-radius: 50% !important;
+    background: linear-gradient(135deg, #ffe088, #d4af37);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 5px 12px var(--shadow); color: #241a00;
+  }
+  .photo-badge svg { width: 21px; height: 21px; }
+  .avatar-slide {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;
+    opacity: 0; transition: opacity 0.7s ease;
+  }
+  .avatar-slide.is-active { opacity: 1; }
+  .avatar-dots { display: flex; justify-content: center; gap: 5px; margin: 10px 0 0; }
+  .avatar-dots .dot-sm { width: 6px; height: 6px; border-radius: 50% !important; background: var(--line); transition: all 0.25s ease; }
+  .avatar-dots .dot-sm.active { background: var(--c-cal); width: 16px; }
+
+  /* ---- Banner/avatar admin: upload + reposition editor ---- */
+  .banner-admin-edit {
+    position: absolute; bottom: 10px; right: 10px; z-index: 3;
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line);
+    padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer;
+  }
+  .banner-admin-edit[hidden] { display: none; }
+  .banner-admin-edit svg { width: 14px; height: 14px; }
+  .avatar-admin-edit {
+    position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); z-index: 3;
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--line);
+    padding: 7px 12px; font-size: 11.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
+  }
+  .avatar-admin-edit[hidden] { display: none; }
+  .avatar-admin-edit svg { width: 13px; height: 13px; }
+
+  .img-editor-viewport {
+    position: relative; overflow: hidden; background: #000;
+    touch-action: none; margin: 0 auto;
+  }
+  .img-editor-viewport.is-rect { width: 100%; aspect-ratio: 1024 / 460; }
+  .img-editor-viewport.is-circle { width: 240px; height: 240px; border-radius: 50% !important; }
+  .img-editor-viewport img {
+    position: absolute; top: 0; left: 0; max-width: none; max-height: none;
+    transform-origin: 0 0; cursor: grab; user-select: none; pointer-events: none;
+  }
+  .img-editor-thumb-tray { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .img-editor-hint { font-size: 11px; color: var(--ink-soft); margin: 10px 0 0; text-align: center; }
+
   /* ---- Intro ---- */
   .intro { text-align: center; }
   .eyebrow {
@@ -235,36 +302,6 @@
     color: var(--ink-soft);
     margin: 0 0 22px;
   }
-
-  /* ---- Photo ---- */
-  .photo-wrap {
-    position: relative;
-    width: clamp(220px, 78vw, 336px); height: clamp(220px, 78vw, 336px);
-    margin: 0 auto 30px;
-  }
-  .photo-ring {
-    width: 100%; height: 100%; border-radius: 50%;
-    background: #fff; padding: 10px;
-    box-shadow: 0 14px 34px var(--shadow);
-  }
-  .photo-ring .inner {
-    width: 100%; height: 100%; border-radius: 50%;
-    overflow: hidden;
-    background: linear-gradient(160deg, var(--rose), var(--sky));
-    display: flex; align-items: center; justify-content: center;
-  }
-  .photo-ring .inner img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .photo-ring .inner .mono {
-    font-family: 'Playfair Display', sans-serif;
-    font-weight: 800; font-size: clamp(70px, 24vw, 108px); color: #fff; opacity: 0.9;
-  }
-  .photo-badge {
-    position: absolute; top: -6px; right: -4px;
-    width: 46px; height: 46px; border-radius: 50%;
-    background: #fff; display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 5px 12px var(--shadow); color: var(--p2);
-  }
-  .photo-badge svg { width: 23px; height: 23px; }
 
   /* ---- Section headers within Details ---- */
   section.block { margin-bottom: 26px; }
@@ -585,6 +622,7 @@
     margin-bottom: 8px;
   }
   .admin-row { display: flex; gap: 8px; align-items: center; }
+  .admin-row[hidden] { display: none; }
   .admin-row input[type="password"],
   .admin-row input[type="file"],
   .admin-row select {
@@ -1182,11 +1220,33 @@
   <section class="banner" id="invite">
     <div class="banner-inner">
       <p class="banner-monogram" aria-hidden="true">&#9670;</p>
+      <img id="bannerImg" alt="" hidden>
     </div>
     <div class="banner-star" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7L2 9.2l7.1-.6z"/></svg>
     </div>
+    <button type="button" class="banner-admin-edit" id="bannerEditBtn" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+      Edit Banner
+    </button>
+    <input type="file" id="bannerFileInput" accept="image/*" hidden>
   </section>
+
+  <div class="photo-wrap">
+    <div class="photo-ring">
+      <div class="inner" id="avatarInner"></div>
+    </div>
+    <div class="photo-badge" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.7 7-6.3-3.8-6.3 3.8 1.7-7L2 9.2l7.1-.6z"/></svg>
+    </div>
+    <button type="button" class="avatar-admin-edit" id="avatarEditBtn" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+      Add Photo
+    </button>
+    <input type="file" id="avatarFileInput" accept="image/*" hidden>
+  </div>
+  <div class="avatar-dots" id="avatarDots" hidden></div>
+  <div class="img-editor-thumb-tray" id="avatarManageTray" style="justify-content: center; margin: 0 auto 20px; max-width: 336px;" hidden></div>
 
   <div class="intro">
     <p class="eyebrow">You are cordially invited</p>
@@ -1597,6 +1657,32 @@
         </div>
       </div>
       <ol class="eighteens-list" id="eighteensModalList"></ol>
+    </div>
+  </div>
+
+  <div class="album-modal" id="imgEditorModal" hidden>
+    <div class="album-modal-inner" style="max-width: 420px;">
+      <div class="album-modal-header">
+        <h3 id="imgEditorTitle">Edit Photo</h3>
+        <button type="button" class="album-modal-close" id="imgEditorClose" aria-label="Cancel">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div style="padding: 18px; overflow-y: auto;">
+        <div class="img-editor-viewport is-rect" id="imgEditorViewport">
+          <img id="imgEditorPhoto" alt="" draggable="false">
+        </div>
+        <p class="img-editor-hint">Drag to reposition &middot; pinch to zoom<span id="imgEditorRotateHint"></span></p>
+        <div class="admin-row" style="margin-top: 12px; gap: 8px;" id="imgEditorRotateRow" hidden>
+          <button type="button" class="pillbtn p3" id="imgEditorRotateLeft" style="flex:1;">&#8634; Rotate</button>
+          <button type="button" class="pillbtn p3" id="imgEditorRotateRight" style="flex:1;">&#8635; Rotate</button>
+        </div>
+        <div class="admin-row" style="margin-top: 10px; gap: 8px;">
+          <button type="button" class="pillbtn p1" id="imgEditorReset" style="flex:1;">Reset</button>
+          <button type="button" class="send-btn" id="imgEditorSave" style="flex:1; margin-top: 0;">Save</button>
+        </div>
+        <p class="admin-msg" id="imgEditorMsg"></p>
+      </div>
     </div>
   </div>
 
@@ -4005,7 +4091,7 @@ var qrcode = function() {
   // Declared up here (rather than near persistManifest/loadManifest further
   // down) because the tile/slideshow builders below read manifest.* at
   // definition time, before the fetch-backed load ever runs.
-  var manifest = { months: {}, monthPhotos: {}, photobooth: [], rsvps: [], wishes: [], celebrationLive: false, videoUrl: '', slideshowMode: { mode: 'covers', albumSlug: '' } };
+  var manifest = { months: {}, monthPhotos: {}, photobooth: [], rsvps: [], wishes: [], celebrationLive: false, videoUrl: '', slideshowMode: { mode: 'covers', albumSlug: '' }, bannerUrl: '', avatarUrls: [] };
 
   // Placeholder far-future date so the template defaults to its inviting
   // "before" copy — swap this for the real event's end time per client.
@@ -4730,7 +4816,9 @@ var qrcode = function() {
       wishes: manifest.wishes,
       celebrationLive: manifest.celebrationLive,
       videoUrl: manifest.videoUrl,
-      slideshowMode: manifest.slideshowMode
+      slideshowMode: manifest.slideshowMode,
+      bannerUrl: manifest.bannerUrl,
+      avatarUrls: manifest.avatarUrls
     };
     return fetch('https://api.jsonbin.io/v3/b/' + GALLERY_CONFIG.jsonbinId, {
       method: 'PUT',
@@ -4812,6 +4900,9 @@ var qrcode = function() {
     applyWishLockState();
     applyGalleryLockState();
     syncSlideshowModeUI();
+    document.getElementById('bannerEditBtn').hidden = false;
+    document.getElementById('avatarEditBtn').hidden = false;
+    if (typeof renderAvatarManageTray === 'function') renderAvatarManageTray();
   }
 
   function loadManifest() {
@@ -4844,8 +4935,12 @@ var qrcode = function() {
         manifest.slideshowMode = (record && record.slideshowMode && typeof record.slideshowMode === 'object')
           ? { mode: record.slideshowMode.mode === 'album' ? 'album' : 'covers', albumSlug: record.slideshowMode.albumSlug || '' }
           : { mode: 'covers', albumSlug: '' };
+        manifest.bannerUrl = (record && record.bannerUrl) || '';
+        manifest.avatarUrls = (record && Array.isArray(record.avatarUrls)) ? record.avatarUrls : [];
         renderSlideshow();
         syncSlideshowModeUI();
+        applyBannerUrl();
+        renderAvatar();
         renderPhotoboothGrid();
         renderWishThread();
         renderVideoCard(manifest.videoUrl);
@@ -5451,6 +5546,316 @@ var qrcode = function() {
   function pDist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
   function pAngle(a, b) { return Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI; }
   function clampNum(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  /* ---- Shared image position/zoom/(rotate) editor — used for both the
+     banner and each avatar photo. Drag to pan, pinch to zoom (and rotate,
+     when allowed); Save bakes the live transform onto an output-sized
+     canvas so what you see while editing is exactly what gets uploaded. ---- */
+  var imgEditorModal = document.getElementById('imgEditorModal');
+  var imgEditorViewport = document.getElementById('imgEditorViewport');
+  var imgEditorPhoto = document.getElementById('imgEditorPhoto');
+  var imgEditorTitle = document.getElementById('imgEditorTitle');
+  var imgEditorRotateRow = document.getElementById('imgEditorRotateRow');
+  var imgEditorRotateHint = document.getElementById('imgEditorRotateHint');
+  var imgEditorMsg = document.getElementById('imgEditorMsg');
+  var imgEditorSaveBtn = document.getElementById('imgEditorSave');
+
+  var editorState = null; // { iw, ih, baseScale, x, y, scale, rot }
+  var editorOpts = null; // { title, shape, outputW, outputH, allowRotate, onSave(blob) -> Promise }
+
+  function resetEditorState() {
+    var vw = imgEditorViewport.clientWidth, vh = imgEditorViewport.clientHeight;
+    editorState.baseScale = Math.max(vw / editorState.iw, vh / editorState.ih);
+    editorState.x = vw / 2;
+    editorState.y = vh / 2;
+    editorState.scale = 1;
+    editorState.rot = 0;
+    applyEditorTransform();
+  }
+
+  function applyEditorTransform() {
+    var s = editorState;
+    imgEditorPhoto.style.transform =
+      'translate(' + (s.x - s.iw * s.baseScale * s.scale / 2) + 'px, ' + (s.y - s.ih * s.baseScale * s.scale / 2) + 'px) ' +
+      'rotate(' + s.rot + 'deg) scale(' + (s.baseScale * s.scale) + ')';
+  }
+
+  (function () {
+    var pointers = new Map();
+    var dragOffX = 0, dragOffY = 0;
+    var startDist = 0, startAngle = 0, startScale = 1, startRot = 0;
+
+    imgEditorViewport.addEventListener('pointerdown', function (e) {
+      if (!editorState) return;
+      imgEditorViewport.setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      var rect = imgEditorViewport.getBoundingClientRect();
+      if (pointers.size === 1) {
+        dragOffX = (e.clientX - rect.left) - editorState.x;
+        dragOffY = (e.clientY - rect.top) - editorState.y;
+      } else if (pointers.size === 2) {
+        var pts = Array.from(pointers.values());
+        startDist = pDist(pts[0], pts[1]);
+        startAngle = pAngle(pts[0], pts[1]);
+        startScale = editorState.scale;
+        startRot = editorState.rot;
+      }
+    });
+    imgEditorViewport.addEventListener('pointermove', function (e) {
+      if (!editorState || !pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      var rect = imgEditorViewport.getBoundingClientRect();
+      if (pointers.size === 1) {
+        editorState.x = (e.clientX - rect.left) - dragOffX;
+        editorState.y = (e.clientY - rect.top) - dragOffY;
+      } else if (pointers.size >= 2) {
+        var pts = Array.from(pointers.values()).slice(0, 2);
+        var d = pDist(pts[0], pts[1]);
+        var a = pAngle(pts[0], pts[1]);
+        editorState.scale = clampNum(startScale * (d / (startDist || d)), 1, 4);
+        if (editorOpts && editorOpts.allowRotate) editorState.rot = startRot + (a - startAngle);
+      }
+      applyEditorTransform();
+    });
+    function endPointer(e) {
+      pointers.delete(e.pointerId);
+      if (!editorState) return;
+      if (pointers.size === 1) {
+        var remaining = Array.from(pointers.values())[0];
+        var rect = imgEditorViewport.getBoundingClientRect();
+        dragOffX = (remaining.x - rect.left) - editorState.x;
+        dragOffY = (remaining.y - rect.top) - editorState.y;
+      }
+    }
+    imgEditorViewport.addEventListener('pointerup', endPointer);
+    imgEditorViewport.addEventListener('pointercancel', endPointer);
+  })();
+
+  document.getElementById('imgEditorRotateLeft').addEventListener('click', function () {
+    if (!editorState) return;
+    editorState.rot -= 15;
+    applyEditorTransform();
+  });
+  document.getElementById('imgEditorRotateRight').addEventListener('click', function () {
+    if (!editorState) return;
+    editorState.rot += 15;
+    applyEditorTransform();
+  });
+  document.getElementById('imgEditorReset').addEventListener('click', function () {
+    if (editorState) resetEditorState();
+  });
+
+  function closeImageEditor() {
+    imgEditorModal.hidden = true;
+    document.body.style.overflow = '';
+    editorState = null;
+    editorOpts = null;
+    imgEditorPhoto.src = '';
+    imgEditorMsg.textContent = '';
+  }
+  document.getElementById('imgEditorClose').addEventListener('click', closeImageEditor);
+  imgEditorModal.addEventListener('click', function (e) { if (e.target === imgEditorModal) closeImageEditor(); });
+
+  function openImageEditor(file, opts) {
+    editorOpts = opts;
+    imgEditorTitle.textContent = opts.title || 'Edit Photo';
+    imgEditorViewport.className = 'img-editor-viewport ' + (opts.shape === 'circle' ? 'is-circle' : 'is-rect');
+    imgEditorRotateRow.hidden = !opts.allowRotate;
+    imgEditorRotateHint.textContent = opts.allowRotate ? ' & rotate' : '';
+    imgEditorMsg.textContent = '';
+    imgEditorSaveBtn.disabled = false;
+    imgEditorSaveBtn.textContent = 'Save';
+
+    var reader = new FileReader();
+    reader.onload = function () {
+      imgEditorPhoto.src = reader.result;
+      imgEditorPhoto.onload = function () {
+        editorState = { iw: imgEditorPhoto.naturalWidth, ih: imgEditorPhoto.naturalHeight, baseScale: 1, x: 0, y: 0, scale: 1, rot: 0 };
+        imgEditorPhoto.style.width = editorState.iw + 'px';
+        imgEditorPhoto.style.height = editorState.ih + 'px';
+        resetEditorState();
+      };
+    };
+    reader.readAsDataURL(file);
+    imgEditorModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+  }
+
+  imgEditorSaveBtn.addEventListener('click', function () {
+    if (!editorState || !editorOpts) return;
+    var opts = editorOpts;
+    var s = editorState;
+    var rect = imgEditorViewport.getBoundingClientRect();
+    var factor = opts.outputW / rect.width;
+    var canvas = document.createElement('canvas');
+    canvas.width = opts.outputW;
+    canvas.height = opts.outputH;
+    var ctx = canvas.getContext('2d');
+    ctx.save();
+    ctx.translate(s.x * factor, s.y * factor);
+    ctx.rotate(s.rot * Math.PI / 180);
+    ctx.scale(s.baseScale * s.scale * factor, s.baseScale * s.scale * factor);
+    ctx.drawImage(imgEditorPhoto, -s.iw / 2, -s.ih / 2, s.iw, s.ih);
+    ctx.restore();
+
+    imgEditorSaveBtn.disabled = true;
+    imgEditorSaveBtn.textContent = 'Saving…';
+    imgEditorMsg.textContent = '';
+    imgEditorMsg.className = 'admin-msg';
+    canvas.toBlob(function (blob) {
+      opts.onSave(blob)
+        .then(function () { closeImageEditor(); })
+        .catch(function () {
+          imgEditorSaveBtn.disabled = false;
+          imgEditorSaveBtn.textContent = 'Save';
+          imgEditorMsg.textContent = 'Upload failed — try again.';
+          imgEditorMsg.className = 'admin-msg err';
+        });
+    }, 'image/jpeg', 0.92);
+  });
+
+  /* ---- Banner: admin can replace the top photo, positioned via the editor ---- */
+  var bannerImgEl = document.getElementById('bannerImg');
+  var bannerEditBtn = document.getElementById('bannerEditBtn');
+  var bannerFileInput = document.getElementById('bannerFileInput');
+
+  function applyBannerUrl() {
+    if (manifest.bannerUrl) {
+      bannerImgEl.src = manifest.bannerUrl;
+      bannerImgEl.hidden = false;
+    }
+  }
+
+  bannerEditBtn.addEventListener('click', function () { bannerFileInput.click(); });
+  bannerFileInput.addEventListener('change', function () {
+    var file = bannerFileInput.files && bannerFileInput.files[0];
+    bannerFileInput.value = '';
+    if (!file) return;
+    openImageEditor(file, {
+      title: 'Edit Banner',
+      shape: 'rect',
+      outputW: 1200,
+      outputH: Math.round(1200 * 460 / 1024),
+      allowRotate: false,
+      onSave: function (blob) {
+        if (!isConfigured()) return Promise.reject(new Error('not configured'));
+        return uploadOneToCloudinary(blob, 'banner').then(function (url) {
+          manifest.bannerUrl = url;
+          applyBannerUrl();
+          return persistManifest();
+        });
+      }
+    });
+  });
+
+  /* ---- Avatar: up to 5 photos, each individually cropped/positioned/rotated
+     at upload time; 2+ photos cross-fade like a small slideshow. ---- */
+  var avatarInner = document.getElementById('avatarInner');
+  var avatarDotsWrap = document.getElementById('avatarDots');
+  var avatarManageTray = document.getElementById('avatarManageTray');
+  var avatarEditBtn = document.getElementById('avatarEditBtn');
+  var avatarFileInput = document.getElementById('avatarFileInput');
+  var MAX_AVATAR_PHOTOS = 5;
+  var avatarAutoplayId = null;
+  var avatarCurrent = 0;
+
+  function renderAvatar() {
+    var urls = (manifest.avatarUrls && manifest.avatarUrls.length) ? manifest.avatarUrls : null;
+    avatarInner.innerHTML = '';
+    if (avatarAutoplayId) { clearInterval(avatarAutoplayId); avatarAutoplayId = null; }
+    avatarCurrent = 0;
+
+    if (!urls) {
+      var fallback = document.createElement('p');
+      fallback.style.cssText = 'margin:0; font-size:clamp(48px,14vw,80px); color:rgba(233,195,73,0.5); text-shadow:0 0 40px rgba(242,202,80,0.4);';
+      fallback.setAttribute('aria-hidden', 'true');
+      fallback.textContent = '◆';
+      avatarInner.appendChild(fallback);
+      avatarDotsWrap.hidden = true;
+    } else {
+      urls.forEach(function (url, i) {
+        var img = document.createElement('img');
+        img.className = 'avatar-slide' + (i === 0 ? ' is-active' : '');
+        img.src = url;
+        img.alt = 'The Debutante';
+        avatarInner.appendChild(img);
+      });
+      if (urls.length > 1) {
+        avatarDotsWrap.hidden = false;
+        avatarDotsWrap.innerHTML = '';
+        urls.forEach(function (url, i) {
+          var d = document.createElement('span');
+          d.className = 'dot-sm' + (i === 0 ? ' active' : '');
+          avatarDotsWrap.appendChild(d);
+        });
+        avatarAutoplayId = setInterval(function () {
+          var slides = avatarInner.querySelectorAll('.avatar-slide');
+          var dots = avatarDotsWrap.querySelectorAll('.dot-sm');
+          slides[avatarCurrent].classList.remove('is-active');
+          dots[avatarCurrent].classList.remove('active');
+          avatarCurrent = (avatarCurrent + 1) % slides.length;
+          slides[avatarCurrent].classList.add('is-active');
+          dots[avatarCurrent].classList.add('active');
+        }, 3500);
+      } else {
+        avatarDotsWrap.hidden = true;
+      }
+    }
+    renderAvatarManageTray();
+  }
+  renderAvatar();
+
+  function renderAvatarManageTray() {
+    if (!isAdminUnlocked()) { avatarManageTray.hidden = true; return; }
+    var urls = manifest.avatarUrls || [];
+    avatarManageTray.innerHTML = '';
+    if (!urls.length) { avatarManageTray.hidden = true; return; }
+    avatarManageTray.hidden = false;
+    urls.forEach(function (url) {
+      var thumb = document.createElement('button');
+      thumb.type = 'button';
+      thumb.className = 'sticker-thumb cover-thumb';
+      thumb.innerHTML = '<img src="' + url + '" alt="Avatar photo">' +
+        '<span class="cover-check" style="background: var(--c-heart);">&times;</span>';
+      thumb.title = 'Remove this avatar photo';
+      thumb.addEventListener('click', function () {
+        manifest.avatarUrls = urls.filter(function (u) { return u !== url; });
+        renderAvatar();
+        if (isConfigured()) persistManifest().catch(function () {});
+      });
+      avatarManageTray.appendChild(thumb);
+    });
+  }
+
+  avatarEditBtn.addEventListener('click', function () {
+    if ((manifest.avatarUrls || []).length >= MAX_AVATAR_PHOTOS) {
+      avatarEditBtn.textContent = 'Max ' + MAX_AVATAR_PHOTOS + ' photos — remove one first';
+      setTimeout(function () { avatarEditBtn.textContent = 'Add Photo'; }, 2500);
+      return;
+    }
+    avatarFileInput.click();
+  });
+  avatarFileInput.addEventListener('change', function () {
+    var file = avatarFileInput.files && avatarFileInput.files[0];
+    avatarFileInput.value = '';
+    if (!file) return;
+    openImageEditor(file, {
+      title: 'Edit Avatar Photo',
+      shape: 'circle',
+      outputW: 600,
+      outputH: 600,
+      allowRotate: true,
+      onSave: function (blob) {
+        if (!isConfigured()) return Promise.reject(new Error('not configured'));
+        return uploadOneToCloudinary(blob, 'avatar').then(function (url) {
+          if (!manifest.avatarUrls) manifest.avatarUrls = [];
+          manifest.avatarUrls.push(url);
+          renderAvatar();
+          return persistManifest();
+        });
+      }
+    });
+  });
 
   function applyStickerTransform(wrapper, state) {
     wrapper.style.transform =
