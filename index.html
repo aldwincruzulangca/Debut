@@ -328,6 +328,46 @@
   .tl-detail { font-family: 'Montserrat', sans-serif; font-size: 12px; color: var(--ink-soft); margin: 3px 0 0; }
   .program-note { margin-top: 14px; font-size: 11.5px; color: var(--ink-soft); }
 
+  .eighteens-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  }
+  .eighteens-item {
+    background: var(--card-solid); border: 1px solid var(--line);
+    aspect-ratio: 1; width: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; cursor: pointer; font: inherit; padding: 10px;
+  }
+  .eighteens-item:active { transform: scale(0.97); }
+  .eighteens-item:focus-visible { outline: 2px solid var(--c-cal); outline-offset: 2px; }
+  .eighteens-item .ico {
+    width: 40px; height: 40px; margin: 0 auto 8px;
+    background: rgba(233, 195, 73, 0.14); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--c-cake);
+  }
+  .eighteens-item .ico svg { width: 20px; height: 20px; }
+  .eighteens-item .t { font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 13px; color: var(--ink); margin: 0; }
+
+  /* ---- 18's List modal: reuses the album-modal shell, own list styling ---- */
+  .eighteens-list {
+    padding: 16px 18px 20px; overflow-y: auto;
+    list-style: none; margin: 0; counter-reset: eitem;
+  }
+  .eighteens-list li {
+    counter-increment: eitem;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--line);
+    font-family: 'Montserrat', sans-serif; font-size: 13.5px; color: var(--ink);
+  }
+  .eighteens-list li:last-child { border-bottom: none; }
+  .eighteens-list li::before {
+    content: counter(eitem);
+    flex: none; width: 26px; height: 26px;
+    background: rgba(233, 195, 73, 0.14); border: 1px solid var(--line);
+    color: var(--c-cal); font-weight: 700; font-size: 11.5px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
   /* ---- RSVP card ---- */
   .rsvp-card {
     background: var(--card-solid);
@@ -1287,6 +1327,32 @@
       <p class="program-note">Suggested flow &mdash; update this to match the real order of the evening.</p>
     </div>
 
+    <div class="program-card">
+      <div class="sub-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15 8.5 22 9.3 17 14 18.5 21 12 17.5 5.5 21 7 14 2 9.3 9 8.5 12 2"/></svg>
+        <h2>18&rsquo;s List</h2>
+      </div>
+      <p class="panel-sub" style="margin: -6px 0 16px; font-size: 12.5px;">Tap a card to see who&rsquo;s presenting each of the eighteen.</p>
+      <div class="eighteens-grid">
+        <button type="button" class="eighteens-item" data-eighteens="18 Flowers">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="5" r="3"/><circle cx="12" cy="19" r="3"/><circle cx="5" cy="12" r="3"/><circle cx="19" cy="12" r="3"/></svg></span>
+          <span class="t">18 Flowers</span>
+        </button>
+        <button type="button" class="eighteens-item" data-eighteens="18 Balloons">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 1 2 11.65c-.4.9-.7 1.75-.7 2.35a1.3 1.3 0 0 1-2.6 0c0-.6-.3-1.45-.7-2.35A6 6 0 0 1 12 3z"/><path d="M11.3 20c-.3.6-.9 1.5-.3 2"/></svg></span>
+          <span class="t">18 Balloons</span>
+        </button>
+        <button type="button" class="eighteens-item" data-eighteens="18 Candles">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21V11a3 3 0 0 1 6 0v10"/><line x1="9" y1="21" x2="15" y2="21"/><path d="M12 7c1-1.2 1-2.6 0-4-1 1.4-1 2.8 0 4z"/></svg></span>
+          <span class="t">18 Candles</span>
+        </button>
+        <button type="button" class="eighteens-item" data-eighteens="18 Blue Bills">
+          <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+          <span class="t">18 Blue Bills</span>
+        </button>
+      </div>
+    </div>
+
   </section>
 
   <section class="block" id="gallery">
@@ -1502,6 +1568,20 @@
         <button type="button" class="pillbtn p1" id="albumDeleteSelectedBtn" disabled>Delete Selected</button>
       </div>
       <div class="album-modal-grid" id="albumModalGrid"></div>
+    </div>
+  </div>
+
+  <div class="album-modal" id="eighteensModal" hidden>
+    <div class="album-modal-inner">
+      <div class="album-modal-header">
+        <h3 id="eighteensModalTitle"></h3>
+        <div class="album-modal-actions">
+          <button type="button" class="album-modal-close" id="eighteensModalClose" aria-label="Close list">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+      <ol class="eighteens-list" id="eighteensModalList"></ol>
     </div>
   </div>
 
@@ -4325,11 +4405,46 @@ var qrcode = function() {
     if (e.target === albumModal) closeAlbumGrid(false);
   });
 
+  // 18's List: each of the four square cards opens the same floating modal,
+  // pre-filled with 18 placeholder slots for who's assigned to that item.
+  var eighteensModal = document.getElementById('eighteensModal');
+  var eighteensModalTitle = document.getElementById('eighteensModalTitle');
+  var eighteensModalList = document.getElementById('eighteensModalList');
+  function openEighteensModal(label) {
+    eighteensModalTitle.textContent = label;
+    eighteensModalList.innerHTML = '';
+    for (var i = 0; i < 18; i++) {
+      var li = document.createElement('li');
+      li.textContent = '[Name]';
+      eighteensModalList.appendChild(li);
+    }
+    eighteensModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    history.pushState({ eighteensModal: true }, '');
+  }
+  function hideEighteensModalNow() {
+    eighteensModal.hidden = true;
+    document.body.style.overflow = '';
+  }
+  function closeEighteensModal(fromPopstate) {
+    if (fromPopstate) { hideEighteensModalNow(); return; }
+    if (history.state && history.state.eighteensModal) history.back();
+    else hideEighteensModalNow();
+  }
+  document.querySelectorAll('.eighteens-item').forEach(function (btn) {
+    btn.addEventListener('click', function () { openEighteensModal(btn.getAttribute('data-eighteens')); });
+  });
+  document.getElementById('eighteensModalClose').addEventListener('click', function () { closeEighteensModal(false); });
+  eighteensModal.addEventListener('click', function (e) {
+    if (e.target === eighteensModal) closeEighteensModal(false);
+  });
+
   // Single handler so a back-press/gesture closes only the topmost modal —
   // opening an album then a photo pushes two history states.
   window.addEventListener('popstate', function () {
     if (!lightbox.hidden) closeLightbox(true);
     else if (!albumModal.hidden) closeAlbumGrid(true);
+    else if (!eighteensModal.hidden) closeEighteensModal(true);
   });
 
   document.getElementById('lightboxClose').addEventListener('click', function () { closeLightbox(false); });
