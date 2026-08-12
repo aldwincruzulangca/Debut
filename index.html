@@ -536,7 +536,7 @@
   .dot[aria-current="true"] { background: var(--c-heart); width: 18px; border-radius: 4px; }
 
   .gallery-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
   }
   .g-tile {
     aspect-ratio: 1; border-radius: 14px; overflow: hidden;
@@ -1419,6 +1419,21 @@
             <label>Album Cover for This Month</label>
             <div class="sticker-tray" id="coverPickerTray"></div>
           </div>
+
+          <label for="slideshowModeSelect" style="margin-top: 18px;">Top Slideshow Shows</label>
+          <div class="admin-row">
+            <select id="slideshowModeSelect">
+              <option value="covers">Album covers (cycles through every folder)</option>
+              <option value="album">One specific album</option>
+            </select>
+          </div>
+          <div class="admin-row" id="slideshowAlbumRow" style="margin-top: 10px;" hidden>
+            <select id="slideshowAlbumSelect"></select>
+          </div>
+          <div class="admin-row" style="margin-top: 10px;">
+            <button type="button" id="slideshowModeSaveBtn" class="pillbtn p3" style="flex:1;">Save Slideshow Setting</button>
+          </div>
+          <p class="admin-msg" id="slideshowModeMsg"></p>
 
           <label for="videoUrlInput" style="margin-top: 18px;">Video Link (YouTube or Facebook)</label>
           <div class="admin-row">
@@ -3983,9 +3998,14 @@ var qrcode = function() {
 </script>
 
 <script>
-  var MONTHS = ["Birth","1 Year Old","2 Years Old","3 Years Old","4 Years Old","5 Years Old","6 Years Old","7 Years Old","8 Years Old","9 Years Old","10 Years Old","11 Years Old","12 Years Old","13 Years Old","14 Years Old","15 Years Old","16 Years Old","17 Years Old"];
-  var MONTH_SLUGS = ["birth","year-01","year-02","year-03","year-04","year-05","year-06","year-07","year-08","year-09","year-10","year-11","year-12","year-13","year-14","year-15","year-16","year-17"];
+  var MONTHS = ["Debutant Pictorial","Birth","1 Year Old","2 Years Old","3 Years Old","4 Years Old","5 Years Old","6 Years Old","7 Years Old","8 Years Old","9 Years Old","10 Years Old","11 Years Old","12 Years Old","13 Years Old","14 Years Old","15 Years Old","16 Years Old","17 Years Old","18 Years Old"];
+  var MONTH_SLUGS = ["pictorial","birth","year-01","year-02","year-03","year-04","year-05","year-06","year-07","year-08","year-09","year-10","year-11","year-12","year-13","year-14","year-15","year-16","year-17","year-18"];
   var HUES = ["rose","peach","butter","mint","sky","lilac"];
+
+  // Declared up here (rather than near persistManifest/loadManifest further
+  // down) because the tile/slideshow builders below read manifest.* at
+  // definition time, before the fetch-backed load ever runs.
+  var manifest = { months: {}, monthPhotos: {}, photobooth: [], rsvps: [], wishes: [], celebrationLive: false, videoUrl: '', slideshowMode: { mode: 'covers', albumSlug: '' } };
 
   // Placeholder far-future date so the template defaults to its inviting
   // "before" copy — swap this for the real event's end time per client.
@@ -4071,36 +4091,28 @@ var qrcode = function() {
   var dotsWrap = document.getElementById('ssDots');
   var grid = document.getElementById('galleryGrid');
   var slides = [];
+  var dots = [];
   var tiles = [];
   var current = 0;
+  var slidePhotoRatio = {};
+
+  // Debutant Pictorial and Birth aren't literal ages, so they get the sparkle
+  // badge; every year-folder after them numbers by the actual age.
+  function tileNum(i) { return i <= 1 ? '✦' : (i - 1); }
 
   MONTHS.forEach(function (label, i) {
     var hue = HUES[i % HUES.length];
     var hue2 = HUES[(i + 2) % HUES.length];
 
-    var slide = document.createElement('div');
-    slide.className = 'slide' + (i === 0 ? ' active' : '');
-    slide.style.background = 'linear-gradient(150deg, var(--' + hue + '), var(--' + hue2 + '))';
-    slide.innerHTML = '<p class="placeholder-num">' + (i === 0 ? '✦' : i) + '</p><p class="placeholder-label">' + label + '</p>';
-    slideshow.appendChild(slide);
-    slides.push(slide);
-
-    var dot = document.createElement('button');
-    dot.className = 'dot';
-    dot.setAttribute('aria-label', 'Go to ' + label + ' photo');
-    dot.setAttribute('aria-current', i === 0 ? 'true' : 'false');
-    dot.addEventListener('click', function () { goTo(i); });
-    dotsWrap.appendChild(dot);
-
     var tile = document.createElement('button');
     tile.className = 'g-tile';
     tile.style.background = 'linear-gradient(150deg, var(--' + hue + '), var(--' + hue2 + '))';
-    tile.innerHTML = '<span class="n">' + (i === 0 ? '✦' : i) + '</span><span class="l">' + label + '</span>';
+    tile.innerHTML = '<span class="n">' + tileNum(i) + '</span><span class="l">' + label + '</span>';
     tile.addEventListener('click', function () {
       if (manifest.months[MONTH_SLUGS[i]]) {
         openAlbumGrid(i);
       } else {
-        goTo(i);
+        goToFolder(i);
         slideshow.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     });
@@ -4108,35 +4120,101 @@ var qrcode = function() {
     tiles.push(tile);
   });
 
-  var slidePhotoRatio = {};
-
   function updateSlideshowAspect() {
     slideshow.style.aspectRatio = slidePhotoRatio[current] || '4 / 3';
   }
 
-  function setSlidePhoto(i, url) {
-    var slide = slides[i];
+  function setTileCover(i, url) {
     var tile = tiles[i];
-    if (!slide || !tile) return;
-    var numLabel = i === 0 ? '✦' : i;
-    slide.style.background = '#000';
-    slide.innerHTML = '<img src="' + url + '" alt="Gallery, ' + MONTHS[i] + '">' +
-      '<span class="slide-caption"><span class="placeholder-num">' + numLabel + '</span>' +
-      '<span class="placeholder-label">' + MONTHS[i] + '</span></span>';
+    if (!tile) return;
     tile.style.background = '#000';
     tile.innerHTML = '<img src="' + url + '" alt="Gallery, ' + MONTHS[i] + '">' +
-      '<span class="tile-caption"><span class="n">' + numLabel + '</span><span class="l">' + MONTHS[i] + '</span></span>';
-    var probe = new Image();
-    probe.onload = function () {
-      if (probe.naturalWidth && probe.naturalHeight) {
-        slidePhotoRatio[i] = probe.naturalWidth + ' / ' + probe.naturalHeight;
-        if (i === current) updateSlideshowAspect();
-      }
-    };
-    probe.src = url;
+      '<span class="tile-caption"><span class="n">' + tileNum(i) + '</span><span class="l">' + MONTHS[i] + '</span></span>';
   }
 
-  var dots = Array.from(dotsWrap.children);
+  // Reverts a tile to its unfilled placeholder — used when the admin deletes
+  // every photo in an album.
+  function resetTilePlaceholder(i) {
+    var tile = tiles[i];
+    if (!tile) return;
+    var hue = HUES[i % HUES.length], hue2 = HUES[(i + 2) % HUES.length];
+    tile.style.background = 'linear-gradient(150deg, var(--' + hue + '), var(--' + hue2 + '))';
+    tile.innerHTML = '<span class="n">' + tileNum(i) + '</span><span class="l">' + MONTHS[i] + '</span>';
+    delete slidePhotoRatio[i];
+  }
+
+  // The top slideshow shows either one cover photo per folder (default) or
+  // every photo inside a single admin-chosen album — fully rebuilt whenever
+  // the mode or the underlying photos change, so it can't drift out of sync
+  // with the tile grid below it.
+  function renderSlideshow() {
+    slides.forEach(function (s) { s.remove(); });
+    dotsWrap.innerHTML = '';
+    slides = [];
+    dots = [];
+    current = 0;
+    slidePhotoRatio = {};
+
+    var mode = (manifest.slideshowMode && manifest.slideshowMode.mode === 'album') ? 'album' : 'covers';
+    var entries;
+
+    if (mode === 'album' && manifest.slideshowMode.albumSlug) {
+      var albumIdx = MONTH_SLUGS.indexOf(manifest.slideshowMode.albumSlug);
+      var albumLabel = albumIdx !== -1 ? MONTHS[albumIdx] : 'Album';
+      var slug = manifest.slideshowMode.albumSlug;
+      var photos = (manifest.monthPhotos[slug] && manifest.monthPhotos[slug].length)
+        ? manifest.monthPhotos[slug]
+        : (manifest.months[slug] ? [manifest.months[slug]] : []);
+      entries = photos.map(function (url) { return { label: albumLabel, url: url }; });
+      if (!entries.length) entries = [{ label: albumLabel, url: null }];
+    } else {
+      entries = MONTHS.map(function (label, i) {
+        return { label: label, url: manifest.months[MONTH_SLUGS[i]] || null };
+      });
+    }
+
+    entries.forEach(function (entry, i) {
+      var hue = HUES[i % HUES.length];
+      var hue2 = HUES[(i + 2) % HUES.length];
+      var numLabel = mode === 'covers' ? tileNum(i) : (i + 1);
+
+      var slide = document.createElement('div');
+      slide.className = 'slide' + (i === 0 ? ' active' : '');
+      if (entry.url) {
+        slide.style.background = '#000';
+        slide.innerHTML = '<img src="' + entry.url + '" alt="Gallery, ' + entry.label + '">' +
+          '<span class="slide-caption"><span class="placeholder-num">' + numLabel + '</span>' +
+          '<span class="placeholder-label">' + entry.label + '</span></span>';
+        (function (idx, url) {
+          var probe = new Image();
+          probe.onload = function () {
+            if (probe.naturalWidth && probe.naturalHeight) {
+              slidePhotoRatio[idx] = probe.naturalWidth + ' / ' + probe.naturalHeight;
+              if (idx === current) updateSlideshowAspect();
+            }
+          };
+          probe.src = url;
+        })(i, entry.url);
+      } else {
+        slide.style.background = 'linear-gradient(150deg, var(--' + hue + '), var(--' + hue2 + '))';
+        slide.innerHTML = '<p class="placeholder-num">' + numLabel + '</p><p class="placeholder-label">' + entry.label + '</p>';
+      }
+      slideshow.appendChild(slide);
+      slides.push(slide);
+
+      var dot = document.createElement('button');
+      dot.className = 'dot';
+      dot.setAttribute('aria-label', 'Go to ' + entry.label + ' photo');
+      dot.setAttribute('aria-current', i === 0 ? 'true' : 'false');
+      dot.addEventListener('click', function () { goTo(i); });
+      dotsWrap.appendChild(dot);
+      dots.push(dot);
+    });
+
+    updateSlideshowAspect();
+  }
+
+  renderSlideshow();
 
   function goTo(i) {
     slides[current].classList.remove('active');
@@ -4145,6 +4223,13 @@ var qrcode = function() {
     slides[current].classList.add('active');
     dots[current].setAttribute('aria-current', 'true');
     updateSlideshowAspect();
+  }
+
+  // Jumps the slideshow to a specific folder's slide — only meaningful in
+  // "covers" mode, where slide index and folder index are the same thing.
+  function goToFolder(monthIdx) {
+    var mode = (manifest.slideshowMode && manifest.slideshowMode.mode === 'album') ? 'album' : 'covers';
+    if (mode === 'covers') goTo(monthIdx);
   }
 
   document.getElementById('ssPrev').addEventListener('click', function () { goTo(current - 1); resetAutoplay(); });
@@ -4250,22 +4335,6 @@ var qrcode = function() {
     return urls.map(function (url) { return { url: url, label: MONTHS[monthIdx], idx: monthIdx }; });
   }
 
-  // Reverts a month tile/slide to its unfilled placeholder — used when the
-  // admin deletes every photo in an album.
-  function resetSlidePlaceholder(i) {
-    var slide = slides[i], tile = tiles[i];
-    if (!slide || !tile) return;
-    var hue = HUES[i % HUES.length], hue2 = HUES[(i + 2) % HUES.length];
-    var numLabel = i === 0 ? '✦' : i;
-    var grad = 'linear-gradient(150deg, var(--' + hue + '), var(--' + hue2 + '))';
-    slide.style.background = grad;
-    slide.innerHTML = '<p class="placeholder-num">' + numLabel + '</p><p class="placeholder-label">' + MONTHS[i] + '</p>';
-    tile.style.background = grad;
-    tile.innerHTML = '<span class="n">' + numLabel + '</span><span class="l">' + MONTHS[i] + '</span>';
-    delete slidePhotoRatio[i];
-    if (i === current) updateSlideshowAspect();
-  }
-
   function updateAlbumSelectedCount() {
     albumSelectedCountEl.textContent = albumSelectedUrls.size + ' selected';
     albumDeleteSelectedBtn.disabled = albumSelectedUrls.size === 0;
@@ -4300,6 +4369,7 @@ var qrcode = function() {
       if (albumCurrentMonthIdx === null) return;
       var slug = MONTH_SLUGS[albumCurrentMonthIdx];
       manifest.monthPhotos[slug] = Array.from(albumModalGrid.children).map(function (el) { return el.dataset.url; });
+      renderSlideshow();
       if (isConfigured()) persistManifest().catch(function () {});
     }
     thumb.addEventListener('pointerup', endDrag);
@@ -4359,12 +4429,13 @@ var qrcode = function() {
     if (albumSelectedUrls.has(manifest.months[slug])) {
       if (remaining.length) {
         manifest.months[slug] = remaining[0];
-        setSlidePhoto(idx, remaining[0]);
+        setTileCover(idx, remaining[0]);
       } else {
         delete manifest.months[slug];
-        resetSlidePlaceholder(idx);
+        resetTilePlaceholder(idx);
       }
     }
+    renderSlideshow();
     albumSelectedUrls.clear();
     updateAlbumSelectedCount();
     var p = isConfigured() ? persistManifest() : Promise.resolve();
@@ -4540,7 +4611,18 @@ var qrcode = function() {
   })();
 
   slideshow.addEventListener('click', function (e) {
-    if (e.target.tagName === 'IMG') openGalleryLightbox(current);
+    if (e.target.tagName !== 'IMG') return;
+    var mode = (manifest.slideshowMode && manifest.slideshowMode.mode === 'album') ? 'album' : 'covers';
+    if (mode === 'album' && manifest.slideshowMode.albumSlug) {
+      var albumIdx = MONTH_SLUGS.indexOf(manifest.slideshowMode.albumSlug);
+      var albumLabel = albumIdx !== -1 ? MONTHS[albumIdx] : 'Album';
+      var items = (manifest.monthPhotos[manifest.slideshowMode.albumSlug] || []).map(function (url) {
+        return { url: url, label: albumLabel };
+      });
+      openLightbox(items, current);
+    } else {
+      openGalleryLightbox(current);
+    }
   });
 
   var MAX_EXTRA_GUESTS = 3;
@@ -4635,8 +4717,6 @@ var qrcode = function() {
     });
   }
 
-  var manifest = { months: {}, monthPhotos: {}, photobooth: [], rsvps: [], wishes: [], celebrationLive: false, videoUrl: '' };
-
   function persistManifest() {
     var record = {
       months: MONTH_SLUGS
@@ -4649,7 +4729,8 @@ var qrcode = function() {
       rsvps: manifest.rsvps,
       wishes: manifest.wishes,
       celebrationLive: manifest.celebrationLive,
-      videoUrl: manifest.videoUrl
+      videoUrl: manifest.videoUrl,
+      slideshowMode: manifest.slideshowMode
     };
     return fetch('https://api.jsonbin.io/v3/b/' + GALLERY_CONFIG.jsonbinId, {
       method: 'PUT',
@@ -4730,6 +4811,7 @@ var qrcode = function() {
     renderWishThread();
     applyWishLockState();
     applyGalleryLockState();
+    syncSlideshowModeUI();
   }
 
   function loadManifest() {
@@ -4745,7 +4827,7 @@ var qrcode = function() {
           var i = MONTH_SLUGS.indexOf(entry.slug);
           if (i !== -1 && entry.url) {
             manifest.months[entry.slug] = entry.url;
-            setSlidePhoto(i, entry.url);
+            setTileCover(i, entry.url);
           }
         });
         var monthPhotosArr = record && Array.isArray(record.monthPhotos) ? record.monthPhotos : [];
@@ -4759,6 +4841,11 @@ var qrcode = function() {
         manifest.wishes = (record && Array.isArray(record.wishes)) ? record.wishes : [];
         manifest.celebrationLive = !!(record && record.celebrationLive);
         manifest.videoUrl = (record && record.videoUrl) || '';
+        manifest.slideshowMode = (record && record.slideshowMode && typeof record.slideshowMode === 'object')
+          ? { mode: record.slideshowMode.mode === 'album' ? 'album' : 'covers', albumSlug: record.slideshowMode.albumSlug || '' }
+          : { mode: 'covers', albumSlug: '' };
+        renderSlideshow();
+        syncSlideshowModeUI();
         renderPhotoboothGrid();
         renderWishThread();
         renderVideoCard(manifest.videoUrl);
@@ -4770,13 +4857,61 @@ var qrcode = function() {
   }
   // Called at the very end of this script, once every DOM reference below is set up.
 
-  // Populate month picker for uploads
+  // Populate month picker for uploads, and the matching album picker used by
+  // the "feature one album" slideshow mode.
   var uploadMonth = document.getElementById('uploadMonth');
+  var slideshowAlbumSelect = document.getElementById('slideshowAlbumSelect');
   MONTHS.forEach(function (label, i) {
     var opt = document.createElement('option');
     opt.value = i;
     opt.textContent = label;
     uploadMonth.appendChild(opt);
+
+    var albumOpt = document.createElement('option');
+    albumOpt.value = MONTH_SLUGS[i];
+    albumOpt.textContent = label;
+    slideshowAlbumSelect.appendChild(albumOpt);
+  });
+
+  var slideshowModeSelect = document.getElementById('slideshowModeSelect');
+  var slideshowAlbumRow = document.getElementById('slideshowAlbumRow');
+  var slideshowModeMsg = document.getElementById('slideshowModeMsg');
+
+  function syncSlideshowModeUI() {
+    var mode = (manifest.slideshowMode && manifest.slideshowMode.mode === 'album') ? 'album' : 'covers';
+    slideshowModeSelect.value = mode;
+    slideshowAlbumRow.hidden = mode !== 'album';
+    if (manifest.slideshowMode && manifest.slideshowMode.albumSlug) {
+      slideshowAlbumSelect.value = manifest.slideshowMode.albumSlug;
+    }
+  }
+
+  slideshowModeSelect.addEventListener('change', function () {
+    slideshowAlbumRow.hidden = slideshowModeSelect.value !== 'album';
+  });
+
+  document.getElementById('slideshowModeSaveBtn').addEventListener('click', function () {
+    manifest.slideshowMode = {
+      mode: slideshowModeSelect.value === 'album' ? 'album' : 'covers',
+      albumSlug: slideshowAlbumSelect.value || ''
+    };
+    renderSlideshow();
+    slideshowModeMsg.textContent = 'Saving…';
+    slideshowModeMsg.className = 'admin-msg';
+    if (isConfigured()) {
+      persistManifest()
+        .then(function () {
+          slideshowModeMsg.textContent = 'Slideshow setting saved.';
+          slideshowModeMsg.className = 'admin-msg ok';
+        })
+        .catch(function () {
+          slideshowModeMsg.textContent = 'Changed here, but couldn’t reach the shared list — try again.';
+          slideshowModeMsg.className = 'admin-msg err';
+        });
+    } else {
+      slideshowModeMsg.textContent = 'Preview only — upload isn’t wired up yet.';
+      slideshowModeMsg.className = 'admin-msg';
+    }
   });
 
   var adminToggle = document.getElementById('adminToggle');
@@ -4830,7 +4965,8 @@ var qrcode = function() {
         (manifest.months[slug] === url ? '<span class="cover-check">&#10003;</span>' : '');
       thumb.addEventListener('click', function () {
         manifest.months[slug] = url;
-        setSlidePhoto(idx, url);
+        setTileCover(idx, url);
+        renderSlideshow();
         renderCoverPicker(idx);
         if (isConfigured()) {
           persistManifest().catch(function () {});
@@ -4923,8 +5059,9 @@ var qrcode = function() {
           manifest.monthPhotos[slug].push(url);
           if (!manifest.months[slug]) {
             manifest.months[slug] = url;
-            setSlidePhoto(idx, url);
+            setTileCover(idx, url);
           }
+          renderSlideshow();
         })
         .catch(function () { failed++; })
         .then(function () { return uploadNext(i + 1); });
