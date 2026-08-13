@@ -246,6 +246,11 @@
   .img-editor-thumb-tray { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .img-editor-thumb-tray[hidden] { display: none; }
   .img-editor-hint { font-size: 11px; color: var(--ink-soft); margin: 10px 0 0; text-align: center; }
+  .lyrics-modal-body {
+    padding: 18px; overflow-y: auto;
+    white-space: pre-line; font-size: 13.5px; line-height: 1.8;
+    font-family: 'Montserrat', sans-serif; color: var(--ink);
+  }
 
   /* ---- Intro ---- */
   .intro { text-align: center; }
@@ -1707,6 +1712,18 @@
         <button type="button" class="pillbtn p1" id="albumDeleteSelectedBtn" disabled>Delete Selected</button>
       </div>
       <div class="album-modal-grid" id="albumModalGrid"></div>
+    </div>
+  </div>
+
+  <div class="album-modal" id="lyricsModal" hidden>
+    <div class="album-modal-inner" style="max-width: 380px;">
+      <div class="album-modal-header">
+        <h3 id="lyricsModalTitle"></h3>
+        <button type="button" class="album-modal-close" id="lyricsModalClose" aria-label="Close lyrics">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="lyrics-modal-body" id="lyricsModalBody"></div>
     </div>
   </div>
 
@@ -4276,7 +4293,20 @@ var qrcode = function() {
       name.textContent = track.name || ('Track ' + (i + 1));
       row.appendChild(dot);
       row.appendChild(name);
-      row.addEventListener('click', function () { selectTrack(i); });
+      // Hold for 2s to view lyrics (while the music keeps playing); a normal
+      // tap/click selects and plays the track instead.
+      var pressTimer = null, longPressed = false;
+      row.addEventListener('pointerdown', function () {
+        longPressed = false;
+        pressTimer = setTimeout(function () { longPressed = true; openLyricsModal(track); }, 2000);
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (evt) {
+        row.addEventListener(evt, function () { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+      });
+      row.addEventListener('click', function (e) {
+        if (longPressed) { e.stopPropagation(); e.preventDefault(); return; }
+        selectTrack(i);
+      });
       if (admin && !(DEFAULT_TRACK && track.url === DEFAULT_TRACK.url)) {
         var del = document.createElement('button');
         del.type = 'button';
@@ -4922,7 +4952,30 @@ var qrcode = function() {
     if (!lightbox.hidden) closeLightbox(true);
     else if (!albumModal.hidden) closeAlbumGrid(true);
     else if (!eighteensModal.hidden) closeEighteensModal(true);
+    else if (!lyricsModal.hidden) closeLyricsModal(true);
   });
+
+  var lyricsModal = document.getElementById('lyricsModal');
+  var lyricsModalTitle = document.getElementById('lyricsModalTitle');
+  var lyricsModalBody = document.getElementById('lyricsModalBody');
+  function openLyricsModal(track) {
+    lyricsModalTitle.textContent = track.name || 'Lyrics';
+    lyricsModalBody.textContent = track.lyrics || 'No lyrics added for this track yet.';
+    lyricsModal.hidden = false;
+    document.body.style.overflow = 'hidden';
+    history.pushState({ lyricsModal: true }, '');
+  }
+  function hideLyricsModalNow() {
+    lyricsModal.hidden = true;
+    document.body.style.overflow = '';
+  }
+  function closeLyricsModal(fromPopstate) {
+    if (fromPopstate) { hideLyricsModalNow(); return; }
+    if (history.state && history.state.lyricsModal) history.back();
+    else hideLyricsModalNow();
+  }
+  document.getElementById('lyricsModalClose').addEventListener('click', function () { closeLyricsModal(false); });
+  lyricsModal.addEventListener('click', function (e) { if (e.target === lyricsModal) closeLyricsModal(false); });
 
   document.getElementById('lightboxClose').addEventListener('click', function () { closeLightbox(false); });
   lightbox.addEventListener('click', function (e) {
