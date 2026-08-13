@@ -1038,6 +1038,18 @@
     display: flex; align-items: center; justify-content: center; font-size: 13px;
   }
   .music-track-del:hover { background: #ff3b30; color: #fff; }
+  .music-track.is-holdable { background: rgba(233, 195, 73, 0.18); }
+  .music-track.is-track-dragging {
+    opacity: 0.6; box-shadow: 0 8px 20px rgba(0,0,0,0.5); cursor: grabbing;
+  }
+  .music-shuffle-toggle {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    background: none; border: none; border-bottom: 1px solid var(--line);
+    padding: 8px 6px 10px; margin-bottom: 6px; cursor: pointer;
+    font-family: 'Montserrat', sans-serif; font-size: 12px; font-weight: 700; color: var(--ink-soft);
+  }
+  .music-shuffle-toggle svg { width: 15px; height: 15px; }
+  .music-shuffle-toggle[aria-pressed="true"] { color: var(--c-cal); }
   .music-volume-panel input[type="range"] {
     writing-mode: vertical-lr; direction: rtl;
     width: 8px; height: 100px; accent-color: var(--c-pin); cursor: pointer;
@@ -1568,7 +1580,7 @@
           </div>
           <p class="admin-msg" id="videoUrlMsg"></p>
 
-          <label for="musicUploadInput" style="margin-top: 18px;">Background Music (up to 8 tracks)</label>
+          <label for="musicUploadInput" style="margin-top: 18px;">Background Music (up to 10 tracks)</label>
           <div class="admin-row">
             <input type="file" id="musicUploadInput" accept="audio/*" multiple>
           </div>
@@ -1786,6 +1798,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
     </button>
     <div class="music-playlist-popup" id="musicPlaylistPopup" hidden>
+      <button type="button" class="music-shuffle-toggle" id="musicShuffleToggle" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        Shuffle
+      </button>
       <p class="music-playlist-empty" id="musicPlaylistEmpty">No background music yet.</p>
       <div class="music-playlist-list" id="musicPlaylistList"></div>
     </div>
@@ -4213,7 +4229,8 @@ var qrcode = function() {
   var musicPlaylistList = document.getElementById('musicPlaylistList');
   var MUSIC_VOL_KEY = 'emaMusicVolume';
   var MUSIC_MUTED_KEY = 'emaMusicMuted';
-  var MAX_MUSIC_TRACKS = 8;
+  var MUSIC_SHUFFLE_KEY = 'emaMusicShuffle';
+  var MAX_MUSIC_TRACKS = 10;
   // No default track ships with Debut — the playlist starts empty until the
   // admin uploads something.
   var DEFAULT_TRACK = null;
@@ -4232,6 +4249,7 @@ var qrcode = function() {
   var currentTrackIndex = 0;
   var musicStarted = false;
   var musicHasInteracted = false;
+  var musicShuffle = localStorage.getItem(MUSIC_SHUFFLE_KEY) === '1';
 
   function updateMusicToggleUI() {
     musicToggleBtn.innerHTML = musicMuted ? MUSIC_ICON_OFF : MUSIC_ICON_ON;
@@ -4262,7 +4280,13 @@ var qrcode = function() {
 
   function playNextTrack() {
     if (!playlist.length) return;
-    currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+    if (musicShuffle && playlist.length > 1) {
+      var next;
+      do { next = Math.floor(Math.random() * playlist.length); } while (next === currentTrackIndex);
+      currentTrackIndex = next;
+    } else {
+      currentTrackIndex = (currentTrackIndex + 1) % playlist.length;
+    }
     loadCurrentTrack(true);
   }
   bgMusicAudio.addEventListener('ended', playNextTrack);
@@ -4293,18 +4317,76 @@ var qrcode = function() {
       name.textContent = track.name || ('Track ' + (i + 1));
       row.appendChild(dot);
       row.appendChild(name);
-      // Hold for 2s to view lyrics (while the music keeps playing); a normal
-      // tap/click selects and plays the track instead.
-      var pressTimer = null, longPressed = false;
-      row.addEventListener('pointerdown', function () {
+      row.dataset.url = track.url;
+      var isDefaultTrack = !!(DEFAULT_TRACK && track.url === DEFAULT_TRACK.url);
+
+      // Hold for 2s: release without moving to view lyrics (music keeps
+      // playing); drag while held to reorder (admin only — the default
+      // track, if any, is pinned first and can't be dragged). A short
+      // tap/click just selects and plays the track, as before.
+      var pressTimer = null, longPressed = false, dragging = false, startX = 0, startY = 0, pointerId = null;
+      row.addEventListener('pointerdown', function (e) {
         longPressed = false;
-        pressTimer = setTimeout(function () { longPressed = true; openLyricsModal(track); }, 2000);
+        dragging = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        pointerId = e.pointerId;
+        pressTimer = setTimeout(function () {
+          longPressed = true;
+          row.classList.add('is-holdable');
+        }, 2000);
       });
-      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (evt) {
-        row.addEventListener(evt, function () { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } });
+      row.addEventListener('pointermove', function (e) {
+        if (e.pointerId !== pointerId) return;
+        if (!longPressed) {
+          if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) {
+            if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+          }
+          return;
+        }
+        if (isAdminUnlocked() && !isDefaultTrack) {
+          if (!dragging) {
+            dragging = true;
+            row.classList.remove('is-holdable');
+            row.classList.add('is-track-dragging');
+            try { row.setPointerCapture(pointerId); } catch (err) {}
+          }
+          var target = document.elementFromPoint(e.clientX, e.clientY);
+          var targetRow = target && target.closest ? target.closest('.music-track') : null;
+          if (targetRow && targetRow !== row && targetRow.parentNode === musicPlaylistList && targetRow.dataset.url !== (DEFAULT_TRACK && DEFAULT_TRACK.url)) {
+            var rows = Array.from(musicPlaylistList.children);
+            var rowIdx = rows.indexOf(row);
+            var targetIdx = rows.indexOf(targetRow);
+            musicPlaylistList.insertBefore(row, rowIdx < targetIdx ? targetRow.nextSibling : targetRow);
+          }
+        }
       });
+      function endPress(e) {
+        if (e.pointerId !== pointerId) return;
+        if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+        row.classList.remove('is-holdable');
+        if (dragging) {
+          row.classList.remove('is-track-dragging');
+          var newOrder = Array.from(musicPlaylistList.children)
+            .map(function (el) { return el.dataset.url; })
+            .filter(function (url) { return !(DEFAULT_TRACK && url === DEFAULT_TRACK.url); });
+          manifest.musicTracks = newOrder
+            .map(function (url) { return (manifest.musicTracks || []).find(function (t) { return t.url === url; }); })
+            .filter(Boolean);
+          rebuildPlaylist();
+          if (isConfigured()) persistManifest().catch(function () {});
+        } else if (longPressed) {
+          openLyricsModal(track);
+        }
+        pointerId = null;
+        // longPressed/dragging are intentionally left as-is here — the click
+        // event that fires right after pointerup needs to see them so it can
+        // suppress the tap-to-play action; they reset at the next pointerdown.
+      }
+      row.addEventListener('pointerup', endPress);
+      row.addEventListener('pointercancel', endPress);
       row.addEventListener('click', function (e) {
-        if (longPressed) { e.stopPropagation(); e.preventDefault(); return; }
+        if (longPressed || dragging) { e.stopPropagation(); e.preventDefault(); return; }
         selectTrack(i);
       });
       if (admin && !(DEFAULT_TRACK && track.url === DEFAULT_TRACK.url)) {
@@ -4369,6 +4451,15 @@ var qrcode = function() {
       musicPlaylistPopup.hidden = true;
       musicPlaylistToggleBtn.setAttribute('aria-pressed', 'false');
     }
+  });
+
+  var musicShuffleToggle = document.getElementById('musicShuffleToggle');
+  musicShuffleToggle.setAttribute('aria-pressed', String(musicShuffle));
+  musicShuffleToggle.addEventListener('click', function (e) {
+    e.stopPropagation();
+    musicShuffle = !musicShuffle;
+    localStorage.setItem(MUSIC_SHUFFLE_KEY, musicShuffle ? '1' : '0');
+    musicShuffleToggle.setAttribute('aria-pressed', String(musicShuffle));
   });
 
   function uploadOneAudioToCloudinary(file, slug) {
