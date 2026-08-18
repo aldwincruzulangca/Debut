@@ -1042,6 +1042,44 @@
   .music-track.is-track-dragging {
     opacity: 0.6; box-shadow: 0 8px 20px rgba(0,0,0,0.5); cursor: grabbing;
   }
+  /* Admin-panel track manager: per-track name/lyrics editing + up/down
+     reorder, shown in the admin panel itself (in addition to the hidden
+     long-press-drag reorder on the guest-facing widget above). */
+  .admin-track-list {
+    display: flex; flex-direction: column; gap: 10px;
+    margin-top: 12px;
+  }
+  .admin-track-list[hidden] { display: none; }
+  .admin-track-item {
+    background: rgba(233, 195, 73, 0.08); border: 1px solid var(--line);
+    padding: 10px 12px;
+  }
+  .admin-track-item-row { display: flex; align-items: center; gap: 8px; }
+  .admin-track-name-input {
+    flex: 1; min-width: 0; font-family: 'Montserrat', sans-serif; font-size: 12.5px; font-weight: 700;
+    color: var(--ink); background: var(--card-solid); border: 1px solid var(--line);
+    padding: 7px 9px;
+  }
+  .admin-track-name-input:focus { border-color: var(--c-cal); outline: none; }
+  .admin-track-btns { display: flex; gap: 4px; flex: none; }
+  .admin-track-btns button {
+    flex: none; width: 22px; height: 22px; border-radius: 50% !important; border: none;
+    background: rgba(0,0,0,0.08); color: var(--ink-soft); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 12px; padding: 0;
+  }
+  .admin-track-btns button:hover:not(:disabled) { background: var(--c-cal); color: #1a1a1a; }
+  .admin-track-btns button:disabled { opacity: 0.35; cursor: default; }
+  .admin-track-btns .admin-track-del:hover { background: #ff3b30; color: #fff; }
+  .admin-track-lyrics-label {
+    display: block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 8px 0 4px;
+  }
+  .admin-track-lyrics {
+    width: 100%; min-height: 70px; resize: vertical; font-family: 'Montserrat', sans-serif; font-size: 12px;
+    color: var(--ink); background: var(--card-solid); border: 1px solid var(--line);
+    padding: 8px 9px; line-height: 1.5;
+  }
+  .admin-track-lyrics:focus { border-color: var(--c-cal); outline: none; }
   .music-shuffle-toggle {
     display: flex; align-items: center; gap: 6px; width: 100%;
     background: none; border: none; border-bottom: 1px solid var(--line);
@@ -1639,6 +1677,8 @@
             <input type="file" id="musicUploadInput" accept="audio/*" multiple>
           </div>
           <p class="admin-msg" id="musicUploadMsg"></p>
+          <p class="panel-sub" style="margin: 4px 0 0; font-size: 11.5px;">Rename a track, paste its lyrics, or use the arrows to reorder the playlist. Guests can also view lyrics by holding down a track in the music popup.</p>
+          <div class="admin-track-list" id="adminMusicList" hidden></div>
         </div>
       </div>
     </div>
@@ -4489,9 +4529,102 @@ var qrcode = function() {
     var keepIdx = playlist.findIndex(function (t) { return t.url === currentUrl; });
     currentTrackIndex = keepIdx !== -1 ? keepIdx : 0;
     renderPlaylistUI();
+    if (isAdminUnlocked()) renderAdminMusicList();
     if (musicHasInteracted) tryStartMusic();
   }
   rebuildPlaylist();
+
+  // Admin-panel track manager: gives admin a visible, no-gesture-required way
+  // to rename tracks, attach lyrics, and reorder the playlist (the guest
+  // widget's long-press-drag reorder above is the same underlying data but
+  // easy to miss). Lives in the admin panel next to the upload input.
+  function renderAdminMusicList() {
+    var wrap = document.getElementById('adminMusicList');
+    if (!wrap) return;
+    var tracks = manifest.musicTracks || [];
+    wrap.innerHTML = '';
+    wrap.hidden = !tracks.length;
+    tracks.forEach(function (track, i) {
+      var item = document.createElement('div');
+      item.className = 'admin-track-item';
+
+      var row = document.createElement('div');
+      row.className = 'admin-track-item-row';
+
+      var nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'admin-track-name-input';
+      nameInput.value = track.name || '';
+      nameInput.placeholder = 'Track name';
+      nameInput.addEventListener('change', function () {
+        track.name = nameInput.value.trim();
+        renderPlaylistUI();
+        if (isConfigured()) persistManifest().catch(function () {});
+      });
+      row.appendChild(nameInput);
+
+      var btns = document.createElement('div');
+      btns.className = 'admin-track-btns';
+
+      var upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.textContent = '↑';
+      upBtn.setAttribute('aria-label', 'Move track up');
+      upBtn.disabled = i === 0;
+      upBtn.addEventListener('click', function () {
+        var arr = manifest.musicTracks;
+        var tmp = arr[i - 1]; arr[i - 1] = arr[i]; arr[i] = tmp;
+        rebuildPlaylist();
+        if (isConfigured()) persistManifest().catch(function () {});
+      });
+      btns.appendChild(upBtn);
+
+      var downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.textContent = '↓';
+      downBtn.setAttribute('aria-label', 'Move track down');
+      downBtn.disabled = i === tracks.length - 1;
+      downBtn.addEventListener('click', function () {
+        var arr = manifest.musicTracks;
+        var tmp = arr[i + 1]; arr[i + 1] = arr[i]; arr[i] = tmp;
+        rebuildPlaylist();
+        if (isConfigured()) persistManifest().catch(function () {});
+      });
+      btns.appendChild(downBtn);
+
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'admin-track-del';
+      delBtn.textContent = '×';
+      delBtn.setAttribute('aria-label', 'Remove track');
+      delBtn.addEventListener('click', function () {
+        manifest.musicTracks = (manifest.musicTracks || []).filter(function (t) { return t !== track; });
+        rebuildPlaylist();
+        if (isConfigured()) persistManifest().catch(function () {});
+      });
+      btns.appendChild(delBtn);
+
+      row.appendChild(btns);
+      item.appendChild(row);
+
+      var lyricsLabel = document.createElement('label');
+      lyricsLabel.className = 'admin-track-lyrics-label';
+      lyricsLabel.textContent = 'Lyrics';
+      item.appendChild(lyricsLabel);
+
+      var lyricsArea = document.createElement('textarea');
+      lyricsArea.className = 'admin-track-lyrics';
+      lyricsArea.value = track.lyrics || '';
+      lyricsArea.placeholder = 'Paste the lyrics for this track — guests see them when they hold down on it in the playlist popup.';
+      lyricsArea.addEventListener('change', function () {
+        track.lyrics = lyricsArea.value;
+        if (isConfigured()) persistManifest().catch(function () {});
+      });
+      item.appendChild(lyricsArea);
+
+      wrap.appendChild(item);
+    });
+  }
 
   musicToggleBtn.addEventListener('click', function () {
     musicMuted = !musicMuted;
@@ -5447,6 +5580,7 @@ var qrcode = function() {
     document.getElementById('avatarEditBtn').hidden = false;
     if (typeof renderAvatarManageTray === 'function') renderAvatarManageTray();
     if (typeof renderPlaylistUI === 'function') renderPlaylistUI();
+    if (typeof renderAdminMusicList === 'function') renderAdminMusicList();
   }
 
   function loadManifest() {
