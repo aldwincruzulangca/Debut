@@ -543,6 +543,18 @@
   .rsvp-edit-actions .pillbtn { flex: none; }
 
   /* ---- Gallery ---- */
+  /* Casual-save deterrents on every gallery photo (slideshow, grid tiles,
+     lightbox, album thumbnails): no native drag-out, no text/image select,
+     no iOS long-press "Save to Photos" callout. This is friction, not real
+     protection -- there is no web API that can block an OS-level
+     screenshot or screen recording, so anyone determined can still get
+     the photo. It stops the casual right-click/long-press save. */
+  .slide img, .g-tile img, #lightboxImg, .album-thumb img {
+    -webkit-user-drag: none;
+    user-drag: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
   .slideshow {
     position: relative;
     aspect-ratio: 4 / 3;
@@ -1184,6 +1196,14 @@
     box-shadow: 0 20px 50px rgba(0,0,0,0.5);
     cursor: zoom-in;
   }
+  /* Sits over the stage (not the img), so it stays put -- doesn't zoom or
+     pan with the photo -- and marks the source if someone screenshots
+     anyway, since a screenshot can't be blocked from web code. */
+  .lightbox-watermark {
+    position: absolute; inset: 0; z-index: 2; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='150'%3E%3Ctext x='-10' y='90' transform='rotate(-28 130 75)' font-family='sans-serif' font-size='19' fill='white' fill-opacity='0.16'%3EEMA'S DEBUT%3C/text%3E%3C/svg%3E");
+    background-repeat: repeat;
+  }
   .lightbox-close {
     position: fixed; top: max(16px, env(safe-area-inset-top)); right: 16px;
     width: 40px; height: 40px; border-radius: 50%;
@@ -1812,7 +1832,8 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
     <div class="lightbox-stage" id="lightboxStage">
-      <img id="lightboxImg" alt="">
+      <img id="lightboxImg" alt="" draggable="false">
+      <div class="lightbox-watermark" aria-hidden="true"></div>
     </div>
     <p class="lightbox-caption" id="lightboxCaption"></p>
     <div class="lightbox-zoom-controls">
@@ -4857,7 +4878,7 @@ var qrcode = function() {
     var tile = tiles[i];
     if (!tile) return;
     tile.style.background = '#000';
-    tile.innerHTML = '<img src="' + url + '" alt="Gallery, ' + MONTHS[i] + '">' +
+    tile.innerHTML = '<img src="' + url + '" alt="Gallery, ' + MONTHS[i] + '" draggable="false">' +
       '<span class="tile-caption"><span class="n">' + tileNum(i) + '</span><span class="l">' + MONTHS[i] + '</span></span>';
   }
 
@@ -4911,7 +4932,7 @@ var qrcode = function() {
       slide.className = 'slide' + (i === 0 ? ' active' : '');
       if (entry.url) {
         slide.style.background = '#000';
-        slide.innerHTML = '<img src="' + entry.url + '" alt="Gallery, ' + entry.label + '">' +
+        slide.innerHTML = '<img src="' + entry.url + '" alt="Gallery, ' + entry.label + '" draggable="false">' +
           '<span class="slide-caption"><span class="placeholder-num">' + numLabel + '</span>' +
           '<span class="placeholder-label">' + entry.label + '</span></span>';
         (function (idx, url) {
@@ -4986,6 +5007,16 @@ var qrcode = function() {
   var lightboxItems = [];
   var lightboxIndex = 0;
   var lbScale = 1, lbX = 0, lbY = 0;
+
+  // Blocks the right-click / long-press "Save image as" menu on gallery
+  // photos. Same caveat as the CSS drag/select block above: this stops the
+  // casual save, not a determined one (devtools, screenshot) -- there's no
+  // web API for that.
+  document.addEventListener('contextmenu', function (e) {
+    if (e.target.tagName === 'IMG' && e.target.closest('#gallery, #lightbox, #albumModal')) {
+      e.preventDefault();
+    }
+  });
 
   function getGalleryLightboxItems() {
     var items = [];
@@ -5119,6 +5150,7 @@ var qrcode = function() {
       var img = document.createElement('img');
       img.src = item.url;
       img.alt = 'Gallery, ' + item.label;
+      img.draggable = false;
       thumb.appendChild(img);
       if (albumEditMode) {
         var cb = document.createElement('input');
@@ -7408,13 +7440,15 @@ var qrcode = function() {
   }
   applyWishLockState();
 
-  // The birth-to-17 growth gallery is a reveal for the event itself — keep it
-  // fully hidden (not just non-interactive) until the party, same gate as above.
+  // The birth-to-17 growth gallery was originally a reveal held back until
+  // the party (same gate as Wishes/Photobooth below) -- now forced open so
+  // it's publicly visible regardless of PARTY_START. Wishes/Photobooth keep
+  // their own gate untouched.
   var galleryLiveWrap = document.getElementById('galleryLiveWrap');
   var galleryLockNote = document.getElementById('galleryLockNote');
   var GALLERY_LOCK_MESSAGE = 'This gallery will be available after the Debut.';
   function applyGalleryLockState() {
-    var locked = isBeforeParty();
+    var locked = false;
     galleryLiveWrap.hidden = locked;
     galleryLockNote.hidden = !locked;
     if (locked) galleryLockNote.textContent = GALLERY_LOCK_MESSAGE;
