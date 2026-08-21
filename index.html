@@ -7354,7 +7354,7 @@ var qrcode = function() {
   // Wishes/Photobooth/Gallery unlock at the actual party start time. Set in
   // the past by default so this template's demo shows them unlocked out of
   // the box — swap for the real event's start time per client.
-  var PARTY_START = new Date('2044-10-11T00:00:00').getTime();
+  var PARTY_START = new Date('2044-10-08T18:00:00').getTime();
 
   // The closing card's caption switches to the Thank You message 2 hours
   // before the party actually ends, not at party start (guests are still
@@ -7424,7 +7424,7 @@ var qrcode = function() {
   // Wishes and the photobooth are both locked until the actual party — the
   // sections stay visible, but the interactive parts refuse to activate
   // until then. Admin can still bypass to test/preview.
-  var PARTY_LOCK_MESSAGE = 'This will be available on October 11, 2044 (Tuesday) at the party.';
+  var PARTY_LOCK_MESSAGE = 'This will be available on October 8, 2044 (Saturday) at the party.';
   function isBeforeParty() {
     return Date.now() < PARTY_START && !isAdminUnlocked();
   }
@@ -7474,7 +7474,7 @@ var qrcode = function() {
 
   // Photobooth: the camera is open to everyone at any time (practice shots,
   // frame try-ons). Only *saving* a shot is time-locked — see applySaveLock().
-  var SAVE_LOCK_MESSAGE = 'Saving unlocks on October 11, 2044 (Tuesday) at the party — keep posing till then!';
+  var SAVE_LOCK_MESSAGE = 'Saving unlocks on October 8, 2044 (Saturday) at the party — keep posing till then!';
   var camLaunchNote = document.getElementById('camLaunchNote');
   if (isBeforeParty()) {
     camLaunchNote.textContent = SAVE_LOCK_MESSAGE;
