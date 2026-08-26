@@ -318,8 +318,7 @@
 
   /* ---- Section headers within Details ---- */
   section.block { margin-bottom: 26px; }
-  .tab-page { display: none; }
-  .tab-page.active { display: block; }
+  .tab-page:not(.active) { display: none !important; }
   .sub-head { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
   .sub-head svg { width: 19px; height: 19px; color: var(--c-cal); }
   .sub-head h2 {
