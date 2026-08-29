@@ -1550,10 +1550,6 @@
           <input type="text" id="guestName" name="guestName" placeholder="Enter your name" required>
         </div>
         <div class="field">
-          <label for="guestContact">Email or Mobile Number (optional)</label>
-          <input type="text" id="guestContact" name="guestContact" placeholder="For updates or directions">
-        </div>
-        <div class="field">
           <label>Additional Guests <span class="counter-max-hint">(up to 3, on top of you)</span></label>
           <div class="guest-counter">
             <div class="counter-row">
@@ -6642,7 +6638,7 @@ var qrcode = function() {
   rsvpForm.addEventListener('submit', function (e) {
     e.preventDefault();
     var name = document.getElementById('guestName').value.trim();
-    var contact = document.getElementById('guestContact').value.trim();
+    var contact = '';
     var extra = mainGuestCounter.get();
 
     if (!name) return;
