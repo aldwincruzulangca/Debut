@@ -366,6 +366,11 @@
     border: 1px solid var(--line);
     padding: 20px 18px;
   }
+  .faq-item { padding: 12px 0; border-top: 1px solid var(--line); text-align: left; }
+  .faq-item:first-of-type { border-top: none; padding-top: 0; }
+  .faq-q { font-weight: 700; font-size: 13.5px; color: var(--ink); margin: 0 0 5px; }
+  .faq-a { font-size: 13px; color: var(--ink-soft); line-height: 1.55; margin: 0; }
+
   .timeline { position: relative; padding-left: 22px; }
   .timeline::before {
     content: ""; position: absolute; left: 4px; top: 6px; bottom: 6px;
@@ -1758,6 +1763,37 @@
         <div class="tl-item"><p class="tl-time">11:00 PM</p><p class="tl-what">Dancing &amp; Celebration</p><p class="tl-detail">The floor opens under the chandeliers</p></div>
       </div>
       <p class="program-note">Suggested flow &mdash; update this to match the real order of the evening.</p>
+    </div>
+
+    <div class="program-card" id="themeNoteCard" style="margin-top: 20px;">
+      <div class="sub-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.8 5.4L19 9l-5.2 1.6L12 16l-1.8-5.4L5 9l5.2-1.6z"/><path d="M19 15l.9 2.7L22.5 18.5l-2.6.8L19 22l-.9-2.7-2.6-.8 2.6-.8z"/></svg>
+        <h2>Our Diamonds &amp; Gold Theme</h2>
+      </div>
+      <p class="panel-sub" style="margin: 0; font-size: 13.5px; line-height: 1.65;">We're celebrating with a <strong>Diamonds &amp; Gold Fantasy</strong> &mdash; think elegant black, shimmering gold accents, and a touch of sparkle. Feel free to come in gold, black, champagne, or anything that catches the light. Formal or semi-formal attire is encouraged.</p>
+    </div>
+
+    <div class="program-card" id="faqCard" style="margin-top: 20px;">
+      <div class="sub-head">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 0c0 1.7-2.5 2-2.5 3.5"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <h2>Good to Know</h2>
+      </div>
+      <div class="faq-item">
+        <p class="faq-q">Is there parking at the venue?</p>
+        <p class="faq-a">Yes, The Grand Ballroom has guest parking available on-site.</p>
+      </div>
+      <div class="faq-item">
+        <p class="faq-q">Can I bring my kids?</p>
+        <p class="faq-a">Of course! Just let us know how many little ones are coming in your RSVP so we can plan seating.</p>
+      </div>
+      <div class="faq-item">
+        <p class="faq-q">What if I can't make it?</p>
+        <p class="faq-a">No worries at all &mdash; a message on the Wishes Wall means just as much to Ema and the family.</p>
+      </div>
+      <div class="faq-item">
+        <p class="faq-q">Any health protocols?</p>
+        <p class="faq-a">For everyone's comfort, please wash your hands or use hand sanitizer where available. Thank you for understanding!</p>
+      </div>
     </div>
 
 </section>
