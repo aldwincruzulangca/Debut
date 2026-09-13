@@ -1,4 +1,65 @@
 <meta charset="UTF-8">
+<style>
+  #iabgOverlay{position:fixed;inset:0;z-index:2147483000;background:rgba(15,15,20,.72);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;padding:20px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;box-sizing:border-box;}
+  #iabgOverlay.iabg-show{display:flex;}
+  #iabgCard{background:#fff;color:#222;max-width:360px;width:100%;border-radius:16px;padding:24px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);box-sizing:border-box;}
+  #iabgCard .iabg-emoji{font-size:38px;line-height:1;margin-bottom:10px;}
+  #iabgCard h3{margin:0 0 8px;font-size:18px;font-weight:700;}
+  #iabgCard p{margin:0 0 16px;font-size:14px;line-height:1.5;color:#555;}
+  #iabgCard .iabg-note{font-size:12.5px;color:#0a7a3c;background:#e9f9ee;border-radius:8px;padding:8px 10px;margin:-4px 0 14px;display:none;text-align:left;}
+  #iabgCard .iabg-note.iabg-show{display:block;}
+  #iabgBtnOpen{display:block;width:100%;padding:12px 16px;border:none;border-radius:10px;background:#ff5a7a;color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;}
+  #iabgBtnStay{display:block;width:100%;padding:11px 16px;border:none;border-radius:10px;background:transparent;color:#888;font-size:13.5px;cursor:pointer;}
+</style>
+<div id="iabgOverlay">
+  <div id="iabgCard">
+    <div class="iabg-emoji">🔗</div>
+    <h3>Open in Your Browser</h3>
+    <p>You're viewing this invite inside an app's built-in browser, which sometimes blocks the background music from playing. For the full experience, open this page in Chrome, Safari, or your default browser.</p>
+    <div class="iabg-note" id="iabgNote">Link copied! Tap the <strong>&#8942;</strong> or <strong>&#183;&#183;&#183;</strong> menu (or the browser icon) at the top of this screen and choose <strong>"Open in Browser"</strong>.</div>
+    <button id="iabgBtnOpen" type="button">Open in Browser</button>
+    <button id="iabgBtnStay" type="button">Continue here anyway</button>
+  </div>
+</div>
+<script>
+(function(){
+  try{
+    var ua = navigator.userAgent || '';
+    var isInApp = /FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|TikTok|BytedanceWebview|Snapchat|Twitter|WhatsApp/i.test(ua);
+    if (!isInApp) return;
+    if (sessionStorage.getItem('iabgDismissed') === '1') return;
+    var overlay = document.getElementById('iabgOverlay');
+    if (!overlay) return;
+    overlay.className = 'iabg-show';
+    var isAndroid = /Android/i.test(ua);
+    document.getElementById('iabgBtnOpen').addEventListener('click', function(){
+      var url = location.href;
+      if (isAndroid) {
+        var stripped = url.replace(/^https?:\/\//,'');
+        location.href = 'intent://' + stripped + '#Intent;scheme=https;end';
+        return;
+      }
+      var note = document.getElementById('iabgNote');
+      function showNote(){ note.className = 'iabg-note iabg-show'; }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(showNote).catch(showNote);
+      } else {
+        try{
+          var ta = document.createElement('textarea');
+          ta.value = url; ta.style.position='fixed'; ta.style.opacity='0';
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+        }catch(e){}
+        showNote();
+      }
+    });
+    document.getElementById('iabgBtnStay').addEventListener('click', function(){
+      overlay.className = '';
+      try{ sessionStorage.setItem('iabgDismissed','1'); }catch(e){}
+    });
+  }catch(e){}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>The Debutante Gala</title>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
